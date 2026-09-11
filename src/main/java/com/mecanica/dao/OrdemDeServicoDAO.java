@@ -43,4 +43,21 @@ public class OrdemDeServicoDAO extends AbstractGenericDAO<OrdemDeServico, Long> 
             return resultado.isEmpty() ? null : resultado.get(0);
         }
     }
+    
+    /**
+     * Usado pelo Controller pra gerar o proximo numero sequencial de OS
+     * (numero atual + 1). Retorna null se ainda nao existir nenhuma OS.
+     */
+    public Long buscarMaiorNumero() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            String hql = "SELECT MAX(o.numero) FROM OrdemDeServico o";
+            Query<Long> query = session.createQuery(hql, Long.class);
+            List<Long> resultado = query.list();
+            return resultado.isEmpty() ? null : resultado.get(0);
+        }
+    }
+    
+    
+    
+    
 }
