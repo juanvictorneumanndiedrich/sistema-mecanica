@@ -8,10 +8,10 @@ import org.hibernate.query.Query;
 import java.util.List;
 
 /**
- * Implementacao base de GenericDAO usando a API nativa do Hibernate
+ * Implementacion base de GenericDAO usando la API nativa de Hibernate
  * (Session/Transaction), configurada via hibernate.cfg.xml. Cada DAO
- * especifico so precisa estender esta classe e informar a classe da
- * entidade, por exemplo:
+ * especifico solo necesita extender esta clase e informar la clase de la
+ * entidad, por ejemplo:
  *
  * <pre>
  * public class ClienteDAO extends AbstractGenericDAO&lt;Cliente, Long&gt; {
@@ -19,32 +19,32 @@ import java.util.List;
  *         super(Cliente.class);
  *     }
  *
- *     // metodos de busca especificos do Cliente entram aqui
+ * // metodos de busqueda especificos del Cliente van aca
  * }
  * </pre>
  *
- * Cada metodo publico abre e fecha sua propria Session (try-with-resources),
- * o que e simples e suficiente para uma aplicacao desktop Swing de uso
+ * Cada metodo publico abre y cierra su propia Session (try-with-resources),
+ * lo que es simple y suficiente para una aplicacion desktop Swing de uso
  * interno.
  */
 public abstract class AbstractGenericDAO<T, ID> implements GenericDAO<T, ID> {
 
-    private final Class<T> classeEntidade;
+    private final Class<T> claseEntidad;
 
-    protected AbstractGenericDAO(Class<T> classeEntidade) {
-        this.classeEntidade = classeEntidade;
+    protected AbstractGenericDAO(Class<T> claseEntidad) {
+        this.claseEntidad = claseEntidad;
     }
 
     @Override
-    public T salvar(T entidade) {
+    public T guardar(T entidad) {
         Transaction tx = null;
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             tx = session.beginTransaction();
-            // merge cobre tanto insercao (entidade nova, id nulo) quanto
-            // atualizacao (entidade ja existente) num unico metodo.
-            T entidadeSalva = session.merge(entidade);
+            // merge cubre tanto la insercion (entidad nueva, id nulo) como
+            // la actualizacion (entidad ya existente) en un solo metodo.
+            T entidadGuardada = session.merge(entidad);
             tx.commit();
-            return entidadeSalva;
+            return entidadGuardada;
         } catch (RuntimeException e) {
             if (tx != null && tx.isActive()) {
                 tx.rollback();
@@ -56,26 +56,26 @@ public abstract class AbstractGenericDAO<T, ID> implements GenericDAO<T, ID> {
     @Override
     public T buscarPorId(ID id) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            return session.get(classeEntidade, id);
+            return session.get(claseEntidad, id);
         }
     }
 
     @Override
     public List<T> listarTodos() {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            String hql = "FROM " + classeEntidade.getSimpleName();
-            Query<T> query = session.createQuery(hql, classeEntidade);
+            String hql = "FROM " + claseEntidad.getSimpleName();
+            Query<T> query = session.createQuery(hql, claseEntidad);
             return query.list();
         }
     }
 
     @Override
-    public void excluir(T entidade) {
+    public void eliminar(T entidad) {
         Transaction tx = null;
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             tx = session.beginTransaction();
-            T gerenciada = session.contains(entidade) ? entidade : session.merge(entidade);
-            session.remove(gerenciada);
+            T gestionada = session.contains(entidad) ? entidad : session.merge(entidad);
+            session.remove(gestionada);
             tx.commit();
         } catch (RuntimeException e) {
             if (tx != null && tx.isActive()) {

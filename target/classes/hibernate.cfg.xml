@@ -20,17 +20,17 @@
 
 		<mapping class="com.mecanica.model.Usuario"/>
 		<mapping class="com.mecanica.model.Socio"/>
-		<mapping class="com.mecanica.model.Funcionario"/>
+		<mapping class="com.mecanica.model.Empleado"/>
 		<mapping class="com.mecanica.model.Cliente"/>
-		<mapping class="com.mecanica.model.Equipamento"/>
-		<mapping class="com.mecanica.model.Fornecedor"/>
-		<mapping class="com.mecanica.model.OrdemDeServico"/>
-		<mapping class="com.mecanica.model.ItemOrdemServico"/>
+		<mapping class="com.mecanica.model.Equipo"/>
+		<mapping class="com.mecanica.model.Proveedor"/>
+		<mapping class="com.mecanica.model.OrdenDeServicio"/>
+		<mapping class="com.mecanica.model.ItemOrdenServicio"/>
 		<mapping class="com.mecanica.model.Compra"/>
-		<mapping class="com.mecanica.model.FechamentoFornecedor"/>
-		<mapping class="com.mecanica.model.RetiradaFuncionario"/>
-		<mapping class="com.mecanica.model.RetiradaSocio"/>
-		<mapping class="com.mecanica.model.MovimentoFinanceiro"/>
+		<mapping class="com.mecanica.model.CierreProveedor"/>
+		<mapping class="com.mecanica.model.RetiroEmpleado"/>
+		<mapping class="com.mecanica.model.RetiroSocio"/>
+		<mapping class="com.mecanica.model.MovimientoFinanciero"/>
 
 	</session-factory>
 </hibernate-configuration>

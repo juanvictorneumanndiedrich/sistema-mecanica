@@ -1,59 +1,88 @@
 package com.mecanica.controller;
 
-import com.mecanica.dao.UsuarioDAO;
-import com.mecanica.model.Usuario;
-
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
+import com.mecanica.dao.UsuarioDAO;
+import com.mecanica.model.Usuario;
+
 /**
- * Controller de Usuario: cadastro, edicao, permissoes e autenticacao
- * (login). A senha nunca e guardada em texto puro -- e sempre um hash
- * SHA-256 (suficiente pro escopo academico do projeto).
+ * Controller de Usuario: registro, edicion, permisos y autenticacion
+ * (login). La clave nunca se guarda en texto plano -- siempre es un hash
+ * SHA-256 (suficiente para el alcance academico del proyecto).
  */
 public class UsuarioController {
 
     private final UsuarioDAO usuarioDAO = new UsuarioDAO();
 
-    /** Cadastra um usuario novo, ja recebendo a senha em texto puro pra fazer o hash. */
-    public Usuario cadastrar(Usuario usuario, String senhaEmTextoPuro) {
-        validarDadosBasicos(usuario);
-        if (senhaEmTextoPuro == null || senhaEmTextoPuro.isBlank()) {
-            throw new IllegalArgumentException("A senha e obrigatoria.");
+    /** Registra un usuario nuevo, recibiendo la clave en texto plano para generar el hash. */
+    public Usuario registrar(Usuario usuario, String claveEnTextoPlano) {
+        validarDatosBasicos(usuario);
+        if (claveEnTextoPlano == null || claveEnTextoPlano.isBlank()) {
+            throw new IllegalArgumentException("La clave es obligatoria.");
         }
         if (usuarioDAO.buscarPorLogin(usuario.getLogin()) != null) {
-            throw new IllegalArgumentException("Ja existe um usuario com esse login.");
+            throw new IllegalArgumentException("Ya existe un usuario con ese login.");
         }
-        usuario.setSenha(hashSenha(senhaEmTextoPuro));
-        return usuarioDAO.salvar(usuario);
+        usuario.setClave(hashClave(claveEnTextoPlano));
+        return usuarioDAO.guardar(usuario);
     }
 
     /**
-     * Atualiza nome/login/permissoes/ativo de um usuario ja existente, sem
-     * mexer na senha (pra isso, ver alterarSenha).
+     * Si todavia no existe ningun usuario -- base recien creada, o schema
+     * recreado -- crea uno inicial "admin" (clave "admin") con todos los
+     * permisos, para que se pueda entrar al sistema por primera vez.
+     * Devuelve true solo cuando lo acaba de crear, asi la pantalla de
+     * login puede avisar los datos al usuario.
+     *
+     * Esa clave es provisoria: lo primero que hay que hacer despues de
+     * entrar es cambiarla en Usuarios y Permisos.
      */
-    public Usuario atualizarDadosCadastrais(Usuario usuario) {
-        validarDadosBasicos(usuario);
-        return usuarioDAO.salvar(usuario);
-    }
-
-    public void alterarSenha(Usuario usuario, String novaSenhaEmTextoPuro) {
-        if (novaSenhaEmTextoPuro == null || novaSenhaEmTextoPuro.isBlank()) {
-            throw new IllegalArgumentException("A nova senha e obrigatoria.");
+    public boolean asegurarUsuarioInicial() {
+        if (!usuarioDAO.listarTodos().isEmpty()) {
+            return false;
         }
-        usuario.setSenha(hashSenha(novaSenhaEmTextoPuro));
-        usuarioDAO.salvar(usuario);
+
+        Usuario admin = new Usuario();
+        admin.setNombre("Administrador");
+        admin.setLogin("admin");
+        admin.setActivo(true);
+        admin.setPermisoClientesEquipos(true);
+        admin.setPermisoOrdenesServicio(true);
+        admin.setPermisoComprasProveedores(true);
+        admin.setPermisoFinanciero(true);
+        admin.setPermisoEmpleadosSocios(true);
+        admin.setPermisoUsuarios(true);
+        registrar(admin, "admin");
+        return true;
     }
 
-    /** Usado na tela de login. Retorna null se login/senha nao conferem ou o usuario esta inativo. */
-    public Usuario autenticar(String login, String senhaEmTextoPuro) {
+    /**
+     * Actualiza nombre/login/permisos/activo de un usuario ya existente, sin
+     * tocar la clave (para eso, ver cambiarClave).
+     */
+    public Usuario actualizarDatos(Usuario usuario) {
+        validarDatosBasicos(usuario);
+        return usuarioDAO.guardar(usuario);
+    }
+
+    public void cambiarClave(Usuario usuario, String nuevaClaveEnTextoPlano) {
+        if (nuevaClaveEnTextoPlano == null || nuevaClaveEnTextoPlano.isBlank()) {
+            throw new IllegalArgumentException("La nueva clave es obligatoria.");
+        }
+        usuario.setClave(hashClave(nuevaClaveEnTextoPlano));
+        usuarioDAO.guardar(usuario);
+    }
+
+    /** Se usa en la pantalla de login. Devuelve null si login/clave no coinciden o el usuario esta inactivo. */
+    public Usuario autenticar(String login, String claveEnTextoPlano) {
         Usuario usuario = usuarioDAO.buscarPorLogin(login);
-        if (usuario == null || !usuario.isAtivo()) {
+        if (usuario == null || !usuario.isActivo()) {
             return null;
         }
-        return hashSenha(senhaEmTextoPuro).equals(usuario.getSenha()) ? usuario : null;
+        return hashClave(claveEnTextoPlano).equals(usuario.getClave()) ? usuario : null;
     }
 
     public Usuario buscarPorId(Long id) {
@@ -64,34 +93,34 @@ public class UsuarioController {
         return usuarioDAO.listarTodos();
     }
 
-    public List<Usuario> listarAtivos() {
-        return usuarioDAO.listarAtivos();
+    public List<Usuario> listarActivos() {
+        return usuarioDAO.listarActivos();
     }
 
-    public void excluir(Usuario usuario) {
-        usuarioDAO.excluir(usuario);
+    public void eliminar(Usuario usuario) {
+        usuarioDAO.eliminar(usuario);
     }
 
-    private void validarDadosBasicos(Usuario usuario) {
-        if (usuario.getNome() == null || usuario.getNome().isBlank()) {
-            throw new IllegalArgumentException("Nome do usuario e obrigatorio.");
+    private void validarDatosBasicos(Usuario usuario) {
+        if (usuario.getNombre() == null || usuario.getNombre().isBlank()) {
+            throw new IllegalArgumentException("El nombre del usuario es obligatorio.");
         }
         if (usuario.getLogin() == null || usuario.getLogin().isBlank()) {
-            throw new IllegalArgumentException("Login e obrigatorio.");
+            throw new IllegalArgumentException("El login es obligatorio.");
         }
     }
 
-    private String hashSenha(String senhaEmTextoPuro) {
+    private String hashClave(String claveEnTextoPlano) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(senhaEmTextoPuro.getBytes(StandardCharsets.UTF_8));
+            byte[] hash = digest.digest(claveEnTextoPlano.getBytes(StandardCharsets.UTF_8));
             StringBuilder sb = new StringBuilder();
             for (byte b : hash) {
                 sb.append(String.format("%02x", b));
             }
             return sb.toString();
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Algoritmo de hash indisponivel.", e);
+            throw new RuntimeException("Algoritmo de hash no disponible.", e);
         }
     }
 }

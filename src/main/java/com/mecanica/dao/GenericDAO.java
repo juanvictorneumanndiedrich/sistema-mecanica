@@ -3,20 +3,20 @@ package com.mecanica.dao;
 import java.util.List;
 
 /**
- * Contrato basico que todo DAO especifico (ClienteDAO, OrdemDeServicoDAO,
- * etc.) deve seguir. Segue o fluxo de camadas ja definido na arquitetura:
- * View -> Service -> DAO -> Model.
+ * Contrato basico que todo DAO especifico (ClienteDAO, OrdenDeServicioDAO,
+ * etc.) debe seguir. Sigue el flujo de capas ya definido en la arquitectura:
+ * View -> Controller -> DAO -> Model.
  *
- * @param <T>  tipo da entidade (ex: Cliente)
- * @param <ID> tipo da chave primaria da entidade (ex: Long)
+ * @param <T>  tipo de la entidad (ej: Cliente)
+ * @param <ID> tipo de la clave primaria de la entidad (ej: Long)
  */
 public interface GenericDAO<T, ID> {
 
-    T salvar(T entidade);
+    T guardar(T entidad);
 
     T buscarPorId(ID id);
 
     List<T> listarTodos();
 
-    void excluir(T entidade);
+    void eliminar(T entidad);
 }

@@ -8,13 +8,13 @@ import org.hibernate.query.Query;
 import java.util.List;
 
 /**
- * DAO especifico de Cliente. Exemplo de como estender AbstractGenericDAO
- * e acrescentar buscas proprias da entidade -- os outros 12 DAOs
- * (EquipamentoDAO, OrdemDeServicoDAO, UsuarioDAO, FornecedorDAO,
- * CompraDAO, FechamentoFornecedorDAO, FuncionarioDAO,
- * RetiradaFuncionarioDAO, SocioDAO, RetiradaSocioDAO,
- * MovimentoFinanceiroDAO, ItemOrdemServicoDAO) seguem exatamente o mesmo
- * padrao.
+ * DAO especifico de Cliente. Ejemplo de como extender AbstractGenericDAO
+ * y agregar busquedas propias de la entidad -- los otros 12 DAOs
+ * (EquipoDAO, OrdenDeServicioDAO, UsuarioDAO, ProveedorDAO,
+ * CompraDAO, CierreProveedorDAO, EmpleadoDAO,
+ * RetiroEmpleadoDAO, SocioDAO, RetiroSocioDAO,
+ * MovimientoFinancieroDAO, ItemOrdenServicioDAO) siguen exactamente el mismo
+ * patron.
  */
 public class ClienteDAO extends AbstractGenericDAO<Cliente, Long> {
 
@@ -22,12 +22,12 @@ public class ClienteDAO extends AbstractGenericDAO<Cliente, Long> {
         super(Cliente.class);
     }
 
-    /** Busca por nome (contendo o texto), usada na tela de Clientes e Equipamentos. */
-    public List<Cliente> buscarPorNome(String nome) {
+    /** Busqueda por nombre (que contenga el texto), usada en la pantalla de Clientes y Equipos. */
+    public List<Cliente> buscarPorNombre(String nombre) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            String hql = "FROM Cliente c WHERE LOWER(c.nome) LIKE LOWER(:nome) ORDER BY c.nome";
+            String hql = "FROM Cliente c WHERE LOWER(c.nombre) LIKE LOWER(:nombre) ORDER BY c.nombre";
             Query<Cliente> query = session.createQuery(hql, Cliente.class);
-            query.setParameter("nome", "%" + nome + "%");
+            query.setParameter("nombre", "%" + nombre + "%");
             return query.list();
         }
     }

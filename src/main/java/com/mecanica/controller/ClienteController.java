@@ -1,10 +1,10 @@
 package com.mecanica.controller;
 
 import com.mecanica.dao.ClienteDAO;
-import com.mecanica.enums.CategoriaMovimentoFinanceiro;
-import com.mecanica.enums.TipoMovimentoFinanceiro;
+import com.mecanica.enums.CategoriaMovimientoFinanciero;
+import com.mecanica.enums.TipoMovimientoFinanciero;
 import com.mecanica.model.Cliente;
-import com.mecanica.model.MovimentoFinanceiro;
+import com.mecanica.model.MovimientoFinanciero;
 import com.mecanica.util.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
@@ -14,19 +14,19 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Controller de Cliente: recebe chamadas da View, aplica as regras de
- * negocio e repassa pro DAO. Operacoes simples (CRUD) so delegam pro
- * ClienteDAO; operacoes que mexem em mais de uma entidade ao mesmo tempo
- * (como registrar pagamento) abrem sua propria Session/Transaction aqui,
- * pra garantir que tudo aconteca junto ou nada aconteca.
+ * Controller de Cliente: recibe llamadas de la View, aplica las reglas de
+ * negocio y delega al DAO. Las operaciones simples (CRUD) solo llaman al
+ * ClienteDAO; las operaciones que tocan mas de una entidad a la vez
+ * (como registrar un pago) abren su propia Session/Transaction aca,
+ * para garantizar que todo pase junto o no pase nada.
  */
 public class ClienteController {
 
     private final ClienteDAO clienteDAO = new ClienteDAO();
 
-    public Cliente salvar(Cliente cliente) {
+    public Cliente guardar(Cliente cliente) {
         validar(cliente);
-        return clienteDAO.salvar(cliente);
+        return clienteDAO.guardar(cliente);
     }
 
     public Cliente buscarPorId(Long id) {
@@ -37,24 +37,24 @@ public class ClienteController {
         return clienteDAO.listarTodos();
     }
 
-    public List<Cliente> buscarPorNome(String nome) {
-        return clienteDAO.buscarPorNome(nome);
+    public List<Cliente> buscarPorNombre(String nombre) {
+        return clienteDAO.buscarPorNombre(nombre);
     }
 
-    public void excluir(Cliente cliente) {
-        clienteDAO.excluir(cliente);
+    public void eliminar(Cliente cliente) {
+        clienteDAO.eliminar(cliente);
     }
 
     /**
-     * Registra um pagamento do cliente: abate o valor do SALDO GERAL dele
-     * (nao de uma OS especifica) e gera o MovimentoFinanceiro correspondente
-     * (ENTRADA / PAGAMENTO_CLIENTE). As duas operacoes acontecem na mesma
-     * transacao, pra nunca abater o saldo sem registrar o movimento (ou
+     * Registra un pago del cliente: descuenta el valor de su SALDO GENERAL
+     * (no de una OS especifica) y genera el MovimientoFinanciero correspondiente
+     * (ENTRADA / PAGO_CLIENTE). Las dos operaciones ocurren en la misma
+     * transaccion, para nunca descontar el saldo sin registrar el movimiento (o
      * vice-versa).
      */
-    public void registrarPagamento(Cliente cliente, BigDecimal valor, String descricao) {
+    public void registrarPagamento(Cliente cliente, BigDecimal valor, String descripcion) {
         if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("O valor do pagamento deve ser maior que zero.");
+            throw new IllegalArgumentException("El valor del pago debe ser mayor que cero.");
         }
 
         Transaction tx = null;
@@ -65,14 +65,14 @@ public class ClienteController {
             clienteGerenciado.setSaldo(clienteGerenciado.getSaldo().subtract(valor));
             session.merge(clienteGerenciado);
 
-            MovimentoFinanceiro movimento = new MovimentoFinanceiro();
-            movimento.setData(LocalDate.now());
-            movimento.setTipo(TipoMovimentoFinanceiro.ENTRADA);
-            movimento.setCategoria(CategoriaMovimentoFinanceiro.PAGAMENTO_CLIENTE);
-            movimento.setValor(valor);
-            movimento.setDescricao(descricao);
-            movimento.setCliente(clienteGerenciado);
-            session.persist(movimento);
+            MovimientoFinanciero movimiento = new MovimientoFinanciero();
+            movimiento.setFecha(LocalDate.now());
+            movimiento.setTipo(TipoMovimientoFinanciero.ENTRADA);
+            movimiento.setCategoria(CategoriaMovimientoFinanciero.PAGO_CLIENTE);
+            movimiento.setValor(valor);
+            movimiento.setDescripcion(descripcion);
+            movimiento.setCliente(clienteGerenciado);
+            session.persist(movimiento);
 
             tx.commit();
         } catch (RuntimeException e) {
@@ -84,8 +84,8 @@ public class ClienteController {
     }
 
     private void validar(Cliente cliente) {
-        if (cliente.getNome() == null || cliente.getNome().isBlank()) {
-            throw new IllegalArgumentException("Nome do cliente e obrigatorio.");
+        if (cliente.getNombre() == null || cliente.getNombre().isBlank()) {
+            throw new IllegalArgumentException("El nombre del cliente es obligatorio.");
         }
     }
 }

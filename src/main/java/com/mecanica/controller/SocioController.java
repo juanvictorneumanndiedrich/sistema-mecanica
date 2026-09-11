@@ -1,8 +1,8 @@
 package com.mecanica.controller;
 
+import com.mecanica.dao.RetiroSocioDAO;
 import com.mecanica.dao.SocioDAO;
-import com.mecanica.dao.RetiradaSocioDAO;
-import com.mecanica.model.RetiradaSocio;
+import com.mecanica.model.RetiroSocio;
 import com.mecanica.model.Socio;
 
 import java.math.BigDecimal;
@@ -12,18 +12,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Controller de Socio: CRUD basico e o calculo do ACERTO (divisao de
- * lucro). A divisao entre os 2 socios e sempre 50%/50% fixo -- essa regra
- * fica em codigo aqui, nao em dado gravado.
+ * Controller de Socio: CRUD basico y el calculo de la LIQUIDACION (division de
+ * ganancia). La division entre los 2 socios es siempre 50%/50% fija -- esa regla
+ * esta en codigo aca, no en un dato guardado.
  */
 public class SocioController {
 
     private final SocioDAO socioDAO = new SocioDAO();
-    private final RetiradaSocioDAO retiradaSocioDAO = new RetiradaSocioDAO();
+    private final RetiroSocioDAO retiradaSocioDAO = new RetiroSocioDAO();
 
-    public Socio salvar(Socio socio) {
+    public Socio guardar(Socio socio) {
         validar(socio);
-        return socioDAO.salvar(socio);
+        return socioDAO.guardar(socio);
     }
 
     public Socio buscarPorId(Long id) {
@@ -34,75 +34,75 @@ public class SocioController {
         return socioDAO.listarTodos();
     }
 
-    public List<Socio> listarAtivos() {
-        return socioDAO.listarAtivos();
+    public List<Socio> listarActivos() {
+        return socioDAO.listarActivos();
     }
 
-    public void excluir(Socio socio) {
-        socioDAO.excluir(socio);
+    public void eliminar(Socio socio) {
+        socioDAO.eliminar(socio);
     }
 
     /**
-     * Calcula o acerto do periodo: divide o lucroTotal em partes iguais
-     * entre os socios ativos (pensado pros 2 socios fixos, 50/50) e
-     * desconta o que cada um ja retirou no periodo via RetiradaSocio.
-     * O valor retornado por socio pode ser negativo se ele ja retirou
-     * mais do que a parte dele.
+     * Calcula la liquidacion del periodo: divide la gananciaTotal en partes iguales
+     * entre los socios activos (pensado para los 2 socios fijos, 50/50) y
+     * descuenta lo que cada uno ya retiro en el periodo via RetiroSocio.
+     * El valor devuelto por socio puede ser negativo si ya retiro
+     * mas que su parte.
      */
-    public List<ResultadoAcerto> calcularAcerto(BigDecimal lucroTotal, LocalDate inicio, LocalDate fim) {
-        List<Socio> socios = listarAtivos();
+    public List<ResultadoLiquidacion> calcularLiquidacion(BigDecimal gananciaTotal, LocalDate inicio, LocalDate fin) {
+        List<Socio> socios = listarActivos();
         if (socios.isEmpty()) {
             return List.of();
         }
-        BigDecimal parte = lucroTotal.divide(BigDecimal.valueOf(socios.size()), 2, RoundingMode.HALF_UP);
+        BigDecimal parte = gananciaTotal.divide(BigDecimal.valueOf(socios.size()), 2, RoundingMode.HALF_UP);
 
-        List<ResultadoAcerto> resultado = new ArrayList<>();
+        List<ResultadoLiquidacion> resultado = new ArrayList<>();
         for (Socio socio : socios) {
-            List<RetiradaSocio> retiradas = retiradaSocioDAO.listarPorSocioEPeriodo(socio, inicio, fim);
-            BigDecimal jaRetirado = BigDecimal.ZERO;
-            for (RetiradaSocio r : retiradas) {
-                jaRetirado = jaRetirado.add(r.getValor());
+            List<RetiroSocio> retiradas = retiradaSocioDAO.listarPorSocioYPeriodo(socio, inicio, fin);
+            BigDecimal yaRetirado = BigDecimal.ZERO;
+            for (RetiroSocio r : retiradas) {
+                yaRetirado = yaRetirado.add(r.getValor());
             }
-            BigDecimal aReceber = parte.subtract(jaRetirado);
-            resultado.add(new ResultadoAcerto(socio, parte, jaRetirado, aReceber));
+            BigDecimal aReceber = parte.subtract(yaRetirado);
+            resultado.add(new ResultadoLiquidacion(socio, parte, yaRetirado, aReceber));
         }
         return resultado;
     }
 
     private void validar(Socio socio) {
-        if (socio.getNome() == null || socio.getNome().isBlank()) {
-            throw new IllegalArgumentException("Nome do socio e obrigatorio.");
+        if (socio.getNombre() == null || socio.getNombre().isBlank()) {
+            throw new IllegalArgumentException("El nombre del socio es obligatorio.");
         }
     }
 
-    /** Resultado do acerto de um socio num periodo. */
-    public static class ResultadoAcerto {
+    /** Resultado de la liquidacion de un socio en un periodo. */
+    public static class ResultadoLiquidacion {
         private final Socio socio;
-        private final BigDecimal parteDoLucro;
-        private final BigDecimal jaRetirado;
-        private final BigDecimal valorAReceber;
+        private final BigDecimal parteGanancia;
+        private final BigDecimal yaRetirado;
+        private final BigDecimal valorARecibir;
 
-        public ResultadoAcerto(Socio socio, BigDecimal parteDoLucro, BigDecimal jaRetirado, BigDecimal valorAReceber) {
+        public ResultadoLiquidacion(Socio socio, BigDecimal parteGanancia, BigDecimal yaRetirado, BigDecimal valorARecibir) {
             this.socio = socio;
-            this.parteDoLucro = parteDoLucro;
-            this.jaRetirado = jaRetirado;
-            this.valorAReceber = valorAReceber;
+            this.parteGanancia = parteGanancia;
+            this.yaRetirado = yaRetirado;
+            this.valorARecibir = valorARecibir;
         }
 
         public Socio getSocio() {
             return socio;
         }
 
-        public BigDecimal getParteDoLucro() {
-            return parteDoLucro;
+        public BigDecimal getParteGanancia() {
+            return parteGanancia;
         }
 
-        public BigDecimal getJaRetirado() {
-            return jaRetirado;
+        public BigDecimal getYaRetirado() {
+            return yaRetirado;
         }
 
-        public BigDecimal getValorAReceber() {
-            return valorAReceber;
+        public BigDecimal getValorARecibir() {
+            return valorARecibir;
         }
     }
 }

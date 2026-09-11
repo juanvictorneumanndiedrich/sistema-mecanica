@@ -6,9 +6,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Cliente da mecanica/tornearia. O pagamento do cliente abate o SALDO
- * GERAL dele (nao uma Ordem de Servico especifica) -- por isso o saldo
- * fica aqui no Cliente, e nao em OrdemDeServico.
+ * Cliente de la mecanica/torneria. El pago del cliente descuenta su SALDO
+ * GENERAL (no una Orden de Servicio especifica) -- por eso el saldo
+ * esta aca en Cliente, y no en OrdenDeServicio.
  */
 @Entity
 @Table(name = "cliente")
@@ -19,30 +19,30 @@ public class Cliente {
     private Long id;
 
     @Column(nullable = false, length = 120)
-    private String nome;
+    private String nombre;
 
     /** CI (pessoa fisica) ou RUC (empresa), documento paraguaio. */
     @Column(name = "documento", length = 30)
     private String documento;
 
     @Column(length = 30)
-    private String telefone;
+    private String telefono;
 
     @Column(length = 200)
-    private String endereco;
+    private String direccion;
 
     /**
-     * Saldo geral do cliente: positivo = cliente deve para a mecanica.
-     * E abatido diretamente pelos pagamentos, sem vincular a uma OS.
+     * Saldo general del cliente: positivo = el cliente debe a la mecanica.
+     * Se descuenta directamente con los pagos, sin vincular a una OS.
      */
     @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal saldo = BigDecimal.ZERO;
 
     @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Equipamento> equipamentos = new ArrayList<>();
+    private List<Equipo> equipos = new ArrayList<>();
 
     @OneToMany(mappedBy = "cliente")
-    private List<OrdemDeServico> ordensDeServico = new ArrayList<>();
+    private List<OrdenDeServicio> ordenesDeServicio = new ArrayList<>();
 
     public Cliente() {
     }
@@ -55,12 +55,12 @@ public class Cliente {
         this.id = id;
     }
 
-    public String getNome() {
-        return nome;
+    public String getNombre() {
+        return nombre;
     }
 
-    public void setNome(String nome) {
-        this.nome = nome;
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
     }
 
     public String getDocumento() {
@@ -71,20 +71,20 @@ public class Cliente {
         this.documento = documento;
     }
 
-    public String getTelefone() {
-        return telefone;
+    public String getTelefono() {
+        return telefono;
     }
 
-    public void setTelefone(String telefone) {
-        this.telefone = telefone;
+    public void setTelefono(String telefono) {
+        this.telefono = telefono;
     }
 
-    public String getEndereco() {
-        return endereco;
+    public String getDireccion() {
+        return direccion;
     }
 
-    public void setEndereco(String endereco) {
-        this.endereco = endereco;
+    public void setDireccion(String direccion) {
+        this.direccion = direccion;
     }
 
     public BigDecimal getSaldo() {
@@ -95,19 +95,19 @@ public class Cliente {
         this.saldo = saldo;
     }
 
-    public List<Equipamento> getEquipamentos() {
-        return equipamentos;
+    public List<Equipo> getEquipos() {
+        return equipos;
     }
 
-    public void setEquipamentos(List<Equipamento> equipamentos) {
-        this.equipamentos = equipamentos;
+    public void setEquipos(List<Equipo> equipos) {
+        this.equipos = equipos;
     }
 
-    public List<OrdemDeServico> getOrdensDeServico() {
-        return ordensDeServico;
+    public List<OrdenDeServicio> getOrdenesDeServicio() {
+        return ordenesDeServicio;
     }
 
-    public void setOrdensDeServico(List<OrdemDeServico> ordensDeServico) {
-        this.ordensDeServico = ordensDeServico;
+    public void setOrdenesDeServicio(List<OrdenDeServicio> ordenesDeServicio) {
+        this.ordenesDeServicio = ordenesDeServicio;
     }
 }

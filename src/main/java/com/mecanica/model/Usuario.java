@@ -3,12 +3,12 @@ package com.mecanica.model;
 import jakarta.persistence.*;
 
 /**
- * Usuario do sistema (login/senha). Ha 3 usuarios previstos: os 2 socios
- * e o(a) secretario(a), mas o cadastro de Usuario e independente das
- * entidades de negocio Socio/Funcionario -- e apenas controle de acesso.
+ * Usuario del sistema (login/clave). Hay 3 usuarios previstos: los 2 socios
+ * y el/la secretario(a), pero el registro de Usuario es independiente de las
+ * entidades de negocio Socio/Empleado -- es solo control de acceso.
  *
- * As permissoes sao individuais por usuario (nao fixas por "cargo"),
- * conforme definido na fase de telas: um booleano por area do sistema.
+ * Los permisos son individuales por usuario (no fijos por "cargo"),
+ * segun lo definido en la fase de pantallas: un booleano por area del sistema.
  */
 @Entity
 @Table(name = "usuario")
@@ -19,36 +19,36 @@ public class Usuario {
     private Long id;
 
     @Column(nullable = false, length = 120)
-    private String nome;
+    private String nombre;
 
     @Column(nullable = false, unique = true, length = 60)
     private String login;
 
-    /** Guardar sempre um hash (nunca a senha em texto puro). */
+    /** Guardar sempre um hash (nunca a clave em texto puro). */
     @Column(nullable = false, length = 255)
-    private String senha;
+    private String clave;
 
     @Column(nullable = false)
-    private boolean ativo = true;
+    private boolean activo = true;
 
-    // Permissoes individuais, uma por area da navegacao principal (6 areas)
-    @Column(name = "permissao_clientes_equipamentos", nullable = false)
-    private boolean permissaoClientesEquipamentos;
+    // Permisos individuales, uno por area de la navegacion principal (6 areas)
+    @Column(name = "permiso_clientes_equipos", nullable = false)
+    private boolean permisoClientesEquipos;
 
-    @Column(name = "permissao_ordens_servico", nullable = false)
-    private boolean permissaoOrdensServico;
+    @Column(name = "permiso_ordenes_servicio", nullable = false)
+    private boolean permisoOrdenesServicio;
 
-    @Column(name = "permissao_compras_fornecedores", nullable = false)
-    private boolean permissaoComprasFornecedores;
+    @Column(name = "permiso_compras_proveedores", nullable = false)
+    private boolean permisoComprasProveedores;
 
-    @Column(name = "permissao_financeiro", nullable = false)
-    private boolean permissaoFinanceiro;
+    @Column(name = "permiso_financiero", nullable = false)
+    private boolean permisoFinanciero;
 
-    @Column(name = "permissao_funcionarios_socios", nullable = false)
-    private boolean permissaoFuncionariosSocios;
+    @Column(name = "permiso_empleados_socios", nullable = false)
+    private boolean permisoEmpleadosSocios;
 
-    @Column(name = "permissao_usuarios", nullable = false)
-    private boolean permissaoUsuarios;
+    @Column(name = "permiso_usuarios", nullable = false)
+    private boolean permisoUsuarios;
 
     public Usuario() {
     }
@@ -61,12 +61,12 @@ public class Usuario {
         this.id = id;
     }
 
-    public String getNome() {
-        return nome;
+    public String getNombre() {
+        return nombre;
     }
 
-    public void setNome(String nome) {
-        this.nome = nome;
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
     }
 
     public String getLogin() {
@@ -77,67 +77,67 @@ public class Usuario {
         this.login = login;
     }
 
-    public String getSenha() {
-        return senha;
+    public String getClave() {
+        return clave;
     }
 
-    public void setSenha(String senha) {
-        this.senha = senha;
+    public void setClave(String clave) {
+        this.clave = clave;
     }
 
-    public boolean isAtivo() {
-        return ativo;
+    public boolean isActivo() {
+        return activo;
     }
 
-    public void setAtivo(boolean ativo) {
-        this.ativo = ativo;
+    public void setActivo(boolean activo) {
+        this.activo = activo;
     }
 
-    public boolean isPermissaoClientesEquipamentos() {
-        return permissaoClientesEquipamentos;
+    public boolean isPermisoClientesEquipos() {
+        return permisoClientesEquipos;
     }
 
-    public void setPermissaoClientesEquipamentos(boolean permissaoClientesEquipamentos) {
-        this.permissaoClientesEquipamentos = permissaoClientesEquipamentos;
+    public void setPermisoClientesEquipos(boolean permisoClientesEquipos) {
+        this.permisoClientesEquipos = permisoClientesEquipos;
     }
 
-    public boolean isPermissaoOrdensServico() {
-        return permissaoOrdensServico;
+    public boolean isPermisoOrdenesServicio() {
+        return permisoOrdenesServicio;
     }
 
-    public void setPermissaoOrdensServico(boolean permissaoOrdensServico) {
-        this.permissaoOrdensServico = permissaoOrdensServico;
+    public void setPermisoOrdenesServicio(boolean permisoOrdenesServicio) {
+        this.permisoOrdenesServicio = permisoOrdenesServicio;
     }
 
-    public boolean isPermissaoComprasFornecedores() {
-        return permissaoComprasFornecedores;
+    public boolean isPermisoComprasProveedores() {
+        return permisoComprasProveedores;
     }
 
-    public void setPermissaoComprasFornecedores(boolean permissaoComprasFornecedores) {
-        this.permissaoComprasFornecedores = permissaoComprasFornecedores;
+    public void setPermisoComprasProveedores(boolean permisoComprasProveedores) {
+        this.permisoComprasProveedores = permisoComprasProveedores;
     }
 
-    public boolean isPermissaoFinanceiro() {
-        return permissaoFinanceiro;
+    public boolean isPermisoFinanciero() {
+        return permisoFinanciero;
     }
 
-    public void setPermissaoFinanceiro(boolean permissaoFinanceiro) {
-        this.permissaoFinanceiro = permissaoFinanceiro;
+    public void setPermisoFinanciero(boolean permisoFinanciero) {
+        this.permisoFinanciero = permisoFinanciero;
     }
 
-    public boolean isPermissaoFuncionariosSocios() {
-        return permissaoFuncionariosSocios;
+    public boolean isPermisoEmpleadosSocios() {
+        return permisoEmpleadosSocios;
     }
 
-    public void setPermissaoFuncionariosSocios(boolean permissaoFuncionariosSocios) {
-        this.permissaoFuncionariosSocios = permissaoFuncionariosSocios;
+    public void setPermisoEmpleadosSocios(boolean permisoEmpleadosSocios) {
+        this.permisoEmpleadosSocios = permisoEmpleadosSocios;
     }
 
-    public boolean isPermissaoUsuarios() {
-        return permissaoUsuarios;
+    public boolean isPermisoUsuarios() {
+        return permisoUsuarios;
     }
 
-    public void setPermissaoUsuarios(boolean permissaoUsuarios) {
-        this.permissaoUsuarios = permissaoUsuarios;
+    public void setPermisoUsuarios(boolean permisoUsuarios) {
+        this.permisoUsuarios = permisoUsuarios;
     }
 }

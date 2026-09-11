@@ -1,14 +1,14 @@
 package com.mecanica.model;
 
-import com.mecanica.enums.FormaPagamentoCompra;
+import com.mecanica.enums.FormaPagoCompra;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * Compra feita a um fornecedor. O formulario de compra tem apenas os
- * 2 cenarios previstos em FormaPagamentoCompra -- o cenario de "conta do
- * proprio cliente no fornecedor" nao existe aqui, por decisao de negocio.
+ * Compra hecha a un proveedor. El formulario de compra tiene solo los
+ * 2 escenarios previstos en FormaPagoCompra -- el escenario de "cuenta del
+ * propio cliente en el proveedor" no existe aca, por decision de negocio.
  */
 @Entity
 @Table(name = "compra")
@@ -19,29 +19,29 @@ public class Compra {
     private Long id;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "fornecedor_id", nullable = false)
-    private Fornecedor fornecedor;
+    @JoinColumn(name = "proveedor_id", nullable = false)
+    private Proveedor proveedor;
 
     @Column(nullable = false)
-    private LocalDate data;
+    private LocalDate fecha;
 
     @Column(length = 200)
-    private String descricao;
+    private String descripcion;
 
     @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal valor;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "forma_pagamento", nullable = false, length = 30)
-    private FormaPagamentoCompra formaPagamento;
+    @Column(name = "forma_pago", nullable = false, length = 30)
+    private FormaPagoCompra formaPago;
 
     /**
-     * Preenchido quando a compra e do tipo LANCADA_EM_CONTA_FORNECEDOR e
-     * ja foi incluida em um fechamento. Fica nulo enquanto pendente.
+     * Se completa cuando la compra es del tipo CARGADA_EN_CUENTA_PROVEEDOR y
+     * ya fue incluida en un cierre. Queda nulo mientras esta pendiente.
      */
     @ManyToOne
-    @JoinColumn(name = "fechamento_fornecedor_id")
-    private FechamentoFornecedor fechamentoFornecedor;
+    @JoinColumn(name = "cierre_proveedor_id")
+    private CierreProveedor cierreProveedor;
 
     public Compra() {
     }
@@ -54,28 +54,28 @@ public class Compra {
         this.id = id;
     }
 
-    public Fornecedor getFornecedor() {
-        return fornecedor;
+    public Proveedor getProveedor() {
+        return proveedor;
     }
 
-    public void setFornecedor(Fornecedor fornecedor) {
-        this.fornecedor = fornecedor;
+    public void setProveedor(Proveedor proveedor) {
+        this.proveedor = proveedor;
     }
 
-    public LocalDate getData() {
-        return data;
+    public LocalDate getFecha() {
+        return fecha;
     }
 
-    public void setData(LocalDate data) {
-        this.data = data;
+    public void setFecha(LocalDate fecha) {
+        this.fecha = fecha;
     }
 
-    public String getDescricao() {
-        return descricao;
+    public String getDescripcion() {
+        return descripcion;
     }
 
-    public void setDescricao(String descricao) {
-        this.descricao = descricao;
+    public void setDescripcion(String descripcion) {
+        this.descripcion = descripcion;
     }
 
     public BigDecimal getValor() {
@@ -86,19 +86,19 @@ public class Compra {
         this.valor = valor;
     }
 
-    public FormaPagamentoCompra getFormaPagamento() {
-        return formaPagamento;
+    public FormaPagoCompra getFormaPago() {
+        return formaPago;
     }
 
-    public void setFormaPagamento(FormaPagamentoCompra formaPagamento) {
-        this.formaPagamento = formaPagamento;
+    public void setFormaPago(FormaPagoCompra formaPago) {
+        this.formaPago = formaPago;
     }
 
-    public FechamentoFornecedor getFechamentoFornecedor() {
-        return fechamentoFornecedor;
+    public CierreProveedor getCierreProveedor() {
+        return cierreProveedor;
     }
 
-    public void setFechamentoFornecedor(FechamentoFornecedor fechamentoFornecedor) {
-        this.fechamentoFornecedor = fechamentoFornecedor;
+    public void setCierreProveedor(CierreProveedor cierreProveedor) {
+        this.cierreProveedor = cierreProveedor;
     }
 }

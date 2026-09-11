@@ -13,7 +13,7 @@ public class UsuarioDAO extends AbstractGenericDAO<Usuario, Long> {
         super(Usuario.class);
     }
 
-    /** Usado na tela de login. */
+    /** Se usa en la pantalla de login. */
     public Usuario buscarPorLogin(String login) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             String hql = "FROM Usuario u WHERE u.login = :login";
@@ -24,9 +24,9 @@ public class UsuarioDAO extends AbstractGenericDAO<Usuario, Long> {
         }
     }
 
-    public List<Usuario> listarAtivos() {
+    public List<Usuario> listarActivos() {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            String hql = "FROM Usuario u WHERE u.ativo = true ORDER BY u.nome";
+            String hql = "FROM Usuario u WHERE u.activo = true ORDER BY u.nombre";
             return session.createQuery(hql, Usuario.class).list();
         }
     }

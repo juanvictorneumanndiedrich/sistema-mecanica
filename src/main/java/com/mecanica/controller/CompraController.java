@@ -1,12 +1,12 @@
 package com.mecanica.controller;
 
 import com.mecanica.dao.CompraDAO;
-import com.mecanica.enums.CategoriaMovimentoFinanceiro;
-import com.mecanica.enums.FormaPagamentoCompra;
-import com.mecanica.enums.TipoMovimentoFinanceiro;
+import com.mecanica.enums.CategoriaMovimientoFinanciero;
+import com.mecanica.enums.FormaPagoCompra;
+import com.mecanica.enums.TipoMovimientoFinanciero;
 import com.mecanica.model.Compra;
-import com.mecanica.model.Fornecedor;
-import com.mecanica.model.MovimentoFinanceiro;
+import com.mecanica.model.Proveedor;
+import com.mecanica.model.MovimientoFinanciero;
 import com.mecanica.util.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
@@ -16,59 +16,59 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Controller de Compra. So tem os 2 cenarios ja definidos na fase de
- * telas: PAGAMENTO_IMEDIATO (gera MovimentoFinanceiro na hora) ou
- * LANCADA_EM_CONTA_FORNECEDOR (fica pendente ate entrar num
- * FechamentoFornecedor, que so gera o MovimentoFinanceiro quando for
- * marcado como pago).
+ * Controller de Compra. Solo tiene los 2 escenarios ya definidos en la fase de
+ * pantallas: PAGO_INMEDIATO (genera MovimientoFinanciero al instante) o
+ * CARGADA_EN_CUENTA_PROVEEDOR (queda pendiente hasta entrar en un
+ * CierreProveedor, que recien genera el MovimientoFinanciero cuando sea
+ * marcado como pagado).
  */
 public class CompraController {
 
     private final CompraDAO compraDAO = new CompraDAO();
 
-    public Compra registrarCompra(Fornecedor fornecedor, LocalDate data, String descricao,
-                                   BigDecimal valor, FormaPagamentoCompra formaPagamento) {
+    public Compra registrarCompra(Proveedor proveedor, LocalDate fecha, String descripcion,
+                                   BigDecimal valor, FormaPagoCompra formaPago) {
         if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("O valor da compra deve ser maior que zero.");
+            throw new IllegalArgumentException("El valor de la compra debe ser mayor que cero.");
         }
-        LocalDate dataFinal = data != null ? data : LocalDate.now();
+        LocalDate fechaFinal = fecha != null ? fecha : LocalDate.now();
 
-        if (formaPagamento == FormaPagamentoCompra.PAGAMENTO_IMEDIATO) {
-            return registrarComMovimentoImediato(fornecedor, dataFinal, descricao, valor, formaPagamento);
+        if (formaPago == FormaPagoCompra.PAGO_INMEDIATO) {
+            return registrarComMovimentoImediato(proveedor, fechaFinal, descripcion, valor, formaPago);
         }
 
-        // LANCADA_EM_CONTA_FORNECEDOR: so grava a compra, sem MovimentoFinanceiro ainda.
+        // CARGADA_EN_CUENTA_PROVEEDOR: solo graba la compra, sin MovimientoFinanciero todavia.
         Compra compra = new Compra();
-        compra.setFornecedor(fornecedor);
-        compra.setData(dataFinal);
-        compra.setDescricao(descricao);
+        compra.setProveedor(proveedor);
+        compra.setFecha(fechaFinal);
+        compra.setDescripcion(descripcion);
         compra.setValor(valor);
-        compra.setFormaPagamento(formaPagamento);
-        return compraDAO.salvar(compra);
+        compra.setFormaPago(formaPago);
+        return compraDAO.guardar(compra);
     }
 
-    private Compra registrarComMovimentoImediato(Fornecedor fornecedor, LocalDate data, String descricao,
-                                                  BigDecimal valor, FormaPagamentoCompra formaPagamento) {
+    private Compra registrarComMovimentoImediato(Proveedor proveedor, LocalDate fecha, String descripcion,
+                                                  BigDecimal valor, FormaPagoCompra formaPago) {
         Transaction tx = null;
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             tx = session.beginTransaction();
 
             Compra compra = new Compra();
-            compra.setFornecedor(fornecedor);
-            compra.setData(data);
-            compra.setDescricao(descricao);
+            compra.setProveedor(proveedor);
+            compra.setFecha(fecha);
+            compra.setDescripcion(descripcion);
             compra.setValor(valor);
-            compra.setFormaPagamento(formaPagamento);
+            compra.setFormaPago(formaPago);
             session.persist(compra);
 
-            MovimentoFinanceiro movimento = new MovimentoFinanceiro();
-            movimento.setData(data);
-            movimento.setTipo(TipoMovimentoFinanceiro.SAIDA);
-            movimento.setCategoria(CategoriaMovimentoFinanceiro.COMPRA_FORNECEDOR);
-            movimento.setValor(valor);
-            movimento.setDescricao(descricao);
-            movimento.setFornecedor(fornecedor);
-            session.persist(movimento);
+            MovimientoFinanciero movimiento = new MovimientoFinanciero();
+            movimiento.setFecha(fecha);
+            movimiento.setTipo(TipoMovimientoFinanciero.SALIDA);
+            movimiento.setCategoria(CategoriaMovimientoFinanciero.COMPRA_PROVEEDOR);
+            movimiento.setValor(valor);
+            movimiento.setDescripcion(descripcion);
+            movimiento.setProveedor(proveedor);
+            session.persist(movimiento);
 
             tx.commit();
             return compra;
@@ -80,15 +80,15 @@ public class CompraController {
         }
     }
 
-    public List<Compra> listarPorFornecedor(Fornecedor fornecedor) {
-        return compraDAO.listarPorFornecedor(fornecedor);
+    public List<Compra> listarPorFornecedor(Proveedor proveedor) {
+        return compraDAO.listarPorFornecedor(proveedor);
     }
 
-    public List<Compra> listarPendentesDeFechamento(Fornecedor fornecedor) {
-        return compraDAO.listarPendentesDeFechamento(fornecedor);
+    public List<Compra> listarPendientesDeCierre(Proveedor proveedor) {
+        return compraDAO.listarPendientesDeCierre(proveedor);
     }
 
-    public void excluir(Compra compra) {
-        compraDAO.excluir(compra);
+    public void eliminar(Compra compra) {
+        compraDAO.eliminar(compra);
     }
 }
