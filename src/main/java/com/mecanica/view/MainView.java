@@ -152,7 +152,7 @@ public class MainView extends JFrame {
 
     private JComponent armarContenido() {
         panelContenido.setBackground(Paleta.GRIS_FONDO);
-        panelContenido.add(crearPanelEnConstruccion("Clientes y Equipos"), CARD_CLIENTES_EQUIPOS);
+        panelContenido.add(new ClientesEquiposPanel(), CARD_CLIENTES_EQUIPOS);
         panelContenido.add(crearPanelEnConstruccion("Ordenes de Servicio"), CARD_ORDENES_SERVICIO);
         panelContenido.add(crearPanelEnConstruccion("Compras y Proveedores"), CARD_COMPRAS_PROVEEDORES);
         panelContenido.add(crearPanelEnConstruccion("Financiero"), CARD_FINANCIERO);
