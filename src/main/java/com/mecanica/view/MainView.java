@@ -14,10 +14,9 @@ import java.util.List;
  * Ventana principal, abierta despues del login. Barra superior azul,
  * menu lateral con las 6 areas de navegacion (solo aparecen las que el
  * usuario logueado tiene permiso) y un panel central con CardLayout que
- * cambia de contenido segun el area seleccionada. Cada area empieza con
- * un panel "en construccion" -- se van reemplazando por las pantallas
- * reales (Clientes y Equipos, Ordenes de Servicio, etc.) a medida que se
- * vayan implementando.
+ * cambia de contenido segun el area seleccionada. Las 6 areas (Clientes y
+ * Equipos, Ordenes de Servicio, Compras y Proveedores, Financiero,
+ * Empleados y Socios, Usuarios y Permisos) ya tienen su pantalla real.
  */
 public class MainView extends JFrame {
 
@@ -42,6 +41,8 @@ public class MainView extends JFrame {
 
     private void armarPantalla() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        // Tamano de respaldo para cuando el usuario restaura la ventana
+        // (deja de estar maximizada); el arranque real siempre es maximizado.
         setSize(1040, 660);
         setMinimumSize(new Dimension(900, 560));
         setLayout(new BorderLayout());
@@ -51,6 +52,7 @@ public class MainView extends JFrame {
         add(armarContenido(), BorderLayout.CENTER);
 
         setLocationRelativeTo(null);
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
 
         // Deja la primera area ya abierta, para que el sistema no arranque
         // con el panel central vacio.
@@ -153,42 +155,13 @@ public class MainView extends JFrame {
     private JComponent armarContenido() {
         panelContenido.setBackground(Paleta.GRIS_FONDO);
         panelContenido.add(new ClientesEquiposPanel(), CARD_CLIENTES_EQUIPOS);
-        panelContenido.add(crearPanelEnConstruccion("Ordenes de Servicio"), CARD_ORDENES_SERVICIO);
-        panelContenido.add(crearPanelEnConstruccion("Compras y Proveedores"), CARD_COMPRAS_PROVEEDORES);
-        panelContenido.add(crearPanelEnConstruccion("Financiero"), CARD_FINANCIERO);
-        panelContenido.add(crearPanelEnConstruccion("Empleados y Socios"), CARD_EMPLEADOS_SOCIOS);
-        panelContenido.add(crearPanelEnConstruccion("Usuarios y Permisos"), CARD_USUARIOS);
+        panelContenido.add(new OrdenesServicioPanel(), CARD_ORDENES_SERVICIO);
+        panelContenido.add(new ComprasProveedoresPanel(), CARD_COMPRAS_PROVEEDORES);
+        panelContenido.add(new FinancieroPanel(), CARD_FINANCIERO);
+        panelContenido.add(new EmpleadosSociosPanel(), CARD_EMPLEADOS_SOCIOS);
+        panelContenido.add(new UsuariosPanel(), CARD_USUARIOS);
         panelContenido.add(crearPanelSinPermisos(), CARD_SIN_PERMISOS);
         return panelContenido;
-    }
-
-    /** Placeholder hasta que la pantalla real del area sea implementada. */
-    private JComponent crearPanelEnConstruccion(String nombreArea) {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(Paleta.GRIS_FONDO);
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-
-        IconoEngranaje icono = new IconoEngranaje(46, Paleta.GRIS_BORDE);
-        panel.add(icono, gbc);
-
-        JLabel titulo = new JLabel(nombreArea);
-        titulo.setFont(new Font("Segoe UI", Font.BOLD, 19));
-        titulo.setForeground(Paleta.AZUL_OSCURO);
-        gbc.gridy = 1;
-        gbc.insets = new Insets(14, 0, 0, 0);
-        panel.add(titulo, gbc);
-
-        JLabel aviso = new JLabel("Pantalla en construccion");
-        aviso.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        aviso.setForeground(Paleta.GRIS_TEXTO);
-        gbc.gridy = 2;
-        gbc.insets = new Insets(4, 0, 0, 0);
-        panel.add(aviso, gbc);
-
-        return panel;
     }
 
     private JComponent crearPanelSinPermisos() {

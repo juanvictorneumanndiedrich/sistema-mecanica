@@ -1,5 +1,6 @@
 package com.mecanica.controller;
 
+import com.mecanica.dao.CierreProveedorDAO;
 import com.mecanica.dao.CompraDAO;
 import com.mecanica.enums.CategoriaMovimientoFinanciero;
 import com.mecanica.enums.EstadoCierreProveedor;
@@ -26,6 +27,7 @@ import java.util.List;
 public class CierreProveedorController {
 
     private final CompraDAO compraDAO = new CompraDAO();
+    private final CierreProveedorDAO cierreProveedorDAO = new CierreProveedorDAO();
 
     /**
      * 1a etapa: suma las compras pendientes (CARGADA_EN_CUENTA_PROVEEDOR y
@@ -67,6 +69,11 @@ public class CierreProveedorController {
             }
             throw e;
         }
+    }
+
+    /** Cierres (CERRADO y PAGADO) ya existentes de un proveedor, para la pantalla de Compras y Proveedores. */
+    public List<CierreProveedor> listarPorProveedor(Proveedor proveedor) {
+        return cierreProveedorDAO.listarPorFornecedor(proveedor);
     }
 
     /**
