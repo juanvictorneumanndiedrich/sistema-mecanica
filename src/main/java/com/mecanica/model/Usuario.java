@@ -32,8 +32,8 @@ public class Usuario {
     private boolean activo = true;
 
     // Permisos individuales, uno por area de la navegacion principal (6 areas)
-    @Column(name = "permiso_clientes_equipos", nullable = false)
-    private boolean permisoClientesEquipos;
+    @Column(name = "permiso_clientes_maquinarios", nullable = false)
+    private boolean permisoClientesMaquinarios;
 
     @Column(name = "permiso_ordenes_servicio", nullable = false)
     private boolean permisoOrdenesServicio;
@@ -93,12 +93,12 @@ public class Usuario {
         this.activo = activo;
     }
 
-    public boolean isPermisoClientesEquipos() {
-        return permisoClientesEquipos;
+    public boolean isPermisoClientesMaquinarios() {
+        return permisoClientesMaquinarios;
     }
 
-    public void setPermisoClientesEquipos(boolean permisoClientesEquipos) {
-        this.permisoClientesEquipos = permisoClientesEquipos;
+    public void setPermisoClientesMaquinarios(boolean permisoClientesMaquinarios) {
+        this.permisoClientesMaquinarios = permisoClientesMaquinarios;
     }
 
     public boolean isPermisoOrdenesServicio() {

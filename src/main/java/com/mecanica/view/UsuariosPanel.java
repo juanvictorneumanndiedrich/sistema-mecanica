@@ -22,7 +22,7 @@ import java.util.List;
  *
  * Las llamadas al Controller (que abren Session de Hibernate) corren en
  * SwingWorker para no trabar la interfaz, siguiendo el mismo patron ya
- * usado en ClientesEquiposPanel.
+ * usado en ClientesMaquinariosPanel.
  */
 public class UsuariosPanel extends JPanel {
 
@@ -368,7 +368,7 @@ public class UsuariosPanel extends JPanel {
 
         private String resumenPermisos(Usuario usuario) {
             StringBuilder resumen = new StringBuilder();
-            agregarSiTiene(resumen, usuario.isPermisoClientesEquipos(), "Clientes y Equipos");
+            agregarSiTiene(resumen, usuario.isPermisoClientesMaquinarios(), "Clientes y Maquinarios");
             agregarSiTiene(resumen, usuario.isPermisoOrdenesServicio(), "Ordenes de Servicio");
             agregarSiTiene(resumen, usuario.isPermisoComprasProveedores(), "Compras y Proveedores");
             agregarSiTiene(resumen, usuario.isPermisoFinanciero(), "Financiero");

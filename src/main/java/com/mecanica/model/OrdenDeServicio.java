@@ -28,8 +28,8 @@ public class OrdenDeServicio {
     private Cliente cliente;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "equipo_id", nullable = false)
-    private Equipo equipo;
+    @JoinColumn(name = "maquinario_id", nullable = false)
+    private Maquinario maquinario;
 
     @Column(name = "fecha_apertura", nullable = false)
     private LocalDate fechaApertura;
@@ -77,12 +77,12 @@ public class OrdenDeServicio {
         this.cliente = cliente;
     }
 
-    public Equipo getEquipo() {
-        return equipo;
+    public Maquinario getMaquinario() {
+        return maquinario;
     }
 
-    public void setEquipo(Equipo equipo) {
-        this.equipo = equipo;
+    public void setMaquinario(Maquinario maquinario) {
+        this.maquinario = maquinario;
     }
 
     public LocalDate getFechaApertura() {

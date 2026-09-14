@@ -49,7 +49,7 @@ public class UsuarioController {
         admin.setNombre("Administrador");
         admin.setLogin("admin");
         admin.setActivo(true);
-        admin.setPermisoClientesEquipos(true);
+        admin.setPermisoClientesMaquinarios(true);
         admin.setPermisoOrdenesServicio(true);
         admin.setPermisoComprasProveedores(true);
         admin.setPermisoFinanciero(true);

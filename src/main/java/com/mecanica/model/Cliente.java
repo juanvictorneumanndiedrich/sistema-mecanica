@@ -39,7 +39,7 @@ public class Cliente {
     private BigDecimal saldo = BigDecimal.ZERO;
 
     @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Equipo> equipos = new ArrayList<>();
+    private List<Maquinario> maquinarios = new ArrayList<>();
 
     @OneToMany(mappedBy = "cliente")
     private List<OrdenDeServicio> ordenesDeServicio = new ArrayList<>();
@@ -95,12 +95,12 @@ public class Cliente {
         this.saldo = saldo;
     }
 
-    public List<Equipo> getEquipos() {
-        return equipos;
+    public List<Maquinario> getMaquinarios() {
+        return maquinarios;
     }
 
-    public void setEquipos(List<Equipo> equipos) {
-        this.equipos = equipos;
+    public void setMaquinarios(List<Maquinario> maquinarios) {
+        this.maquinarios = maquinarios;
     }
 
     public List<OrdenDeServicio> getOrdenesDeServicio() {

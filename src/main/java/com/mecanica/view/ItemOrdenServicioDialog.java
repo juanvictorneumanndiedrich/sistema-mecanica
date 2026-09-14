@@ -4,7 +4,7 @@ import com.mecanica.controller.ItemOrdenServicioController;
 import com.mecanica.controller.OrdenDeServicioController;
 import com.mecanica.enums.EstadoOrdenServicio;
 import com.mecanica.enums.TipoItemOrdenServicio;
-import com.mecanica.model.Equipo;
+import com.mecanica.model.Maquinario;
 import com.mecanica.model.ItemOrdenServicio;
 import com.mecanica.model.OrdenDeServicio;
 
@@ -20,7 +20,7 @@ import java.util.List;
 
 /**
  * Dialogo modal de detalle de una Orden de Servicio: muestra los datos de
- * cabecera (cliente, equipo, fecha, estado, problema reportado) y la lista
+ * cabecera (cliente, maquinario, fecha, estado, problema reportado) y la lista
  * de items (servicios/repuestos), con un formulario simple para agregar un
  * item nuevo y un boton para quitar el item seleccionado. Cada
  * agregar/quitar llama al ItemOrdenServicioController (que ya recalcula el
@@ -45,7 +45,7 @@ public class ItemOrdenServicioDialog extends JDialog {
     private final JTable tablaItems = new JTable(modeloItems);
 
     private final JLabel labelCliente = new JLabel();
-    private final JLabel labelEquipo = new JLabel();
+    private final JLabel labelMaquinario = new JLabel();
     private final JLabel labelFecha = new JLabel();
     private final JLabel labelEstado = new JLabel();
     private final JTextArea areaProblema = new JTextArea();
@@ -101,14 +101,14 @@ public class ItemOrdenServicioDialog extends JDialog {
         gbc.insets = new Insets(0, 0, 4, 0);
 
         Font fonteDado = new Font("Segoe UI", Font.PLAIN, 13);
-        for (JLabel label : new JLabel[]{labelCliente, labelEquipo, labelFecha, labelEstado}) {
+        for (JLabel label : new JLabel[]{labelCliente, labelMaquinario, labelFecha, labelEstado}) {
             label.setFont(fonteDado);
             label.setForeground(Paleta.AZUL_OSCURO);
         }
 
         panel.add(labelCliente, gbc);
         gbc.gridx = 1;
-        panel.add(labelEquipo, gbc);
+        panel.add(labelMaquinario, gbc);
 
         gbc.gridx = 0;
         gbc.gridy = 1;
@@ -256,7 +256,7 @@ public class ItemOrdenServicioDialog extends JDialog {
     private void actualizarEncabezado() {
         setTitle("Orden de Servicio N° " + os.getNumero());
         labelCliente.setText("Cliente: " + os.getCliente().getNombre());
-        labelEquipo.setText("Equipo: " + formatoEquipo(os.getEquipo()));
+        labelMaquinario.setText("Maquinario: " + formatoMaquinario(os.getMaquinario()));
         labelFecha.setText("Fecha apertura: " + os.getFechaApertura().format(FORMATO_FECHA)
                 + (os.getFechaCierre() == null ? "" : "   Fecha cierre: " + os.getFechaCierre().format(FORMATO_FECHA)));
         labelEstado.setText("Estado: " + os.getEstado());
@@ -276,12 +276,12 @@ public class ItemOrdenServicioDialog extends JDialog {
         botonQuitar.setEnabled(esEditable() && tablaItems.getSelectedRow() >= 0);
     }
 
-    private String formatoEquipo(Equipo equipo) {
-        StringBuilder texto = new StringBuilder(equipo.getTipo().toString());
-        if (equipo.getIdentificacion() != null && !equipo.getIdentificacion().isBlank()) {
-            texto.append(" - ").append(equipo.getIdentificacion());
-        } else if (equipo.getMarca() != null && !equipo.getMarca().isBlank()) {
-            texto.append(" - ").append(equipo.getMarca());
+    private String formatoMaquinario(Maquinario maquinario) {
+        StringBuilder texto = new StringBuilder(maquinario.getTipo().toString());
+        if (maquinario.getIdentificacion() != null && !maquinario.getIdentificacion().isBlank()) {
+            texto.append(" - ").append(maquinario.getIdentificacion());
+        } else if (maquinario.getMarca() != null && !maquinario.getMarca().isBlank()) {
+            texto.append(" - ").append(maquinario.getMarca());
         }
         return texto.toString();
     }

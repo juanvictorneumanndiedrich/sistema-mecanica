@@ -15,12 +15,12 @@ import java.util.List;
  * menu lateral con las 6 areas de navegacion (solo aparecen las que el
  * usuario logueado tiene permiso) y un panel central con CardLayout que
  * cambia de contenido segun el area seleccionada. Las 6 areas (Clientes y
- * Equipos, Ordenes de Servicio, Compras y Proveedores, Financiero,
+ * Maquinarios, Ordenes de Servicio, Compras y Proveedores, Financiero,
  * Empleados y Socios, Usuarios y Permisos) ya tienen su pantalla real.
  */
 public class MainView extends JFrame {
 
-    private static final String CARD_CLIENTES_EQUIPOS = "clientesEquipos";
+    private static final String CARD_CLIENTES_MAQUINARIOS = "clientesMaquinarios";
     private static final String CARD_ORDENES_SERVICIO = "ordenesServicio";
     private static final String CARD_COMPRAS_PROVEEDORES = "comprasProveedores";
     private static final String CARD_FINANCIERO = "financiero";
@@ -114,8 +114,8 @@ public class MainView extends JFrame {
                 BorderFactory.createMatteBorder(0, 0, 0, 1, Paleta.GRIS_BORDE),
                 BorderFactory.createEmptyBorder(14, 0, 14, 0)));
 
-        if (usuarioLogueado.isPermisoClientesEquipos()) {
-            menu.add(crearBotonMenu("Clientes y Equipos", CARD_CLIENTES_EQUIPOS));
+        if (usuarioLogueado.isPermisoClientesMaquinarios()) {
+            menu.add(crearBotonMenu("Clientes y Maquinarios", CARD_CLIENTES_MAQUINARIOS));
         }
         if (usuarioLogueado.isPermisoOrdenesServicio()) {
             menu.add(crearBotonMenu("Ordenes de Servicio", CARD_ORDENES_SERVICIO));
@@ -154,7 +154,7 @@ public class MainView extends JFrame {
 
     private JComponent armarContenido() {
         panelContenido.setBackground(Paleta.GRIS_FONDO);
-        panelContenido.add(new ClientesEquiposPanel(), CARD_CLIENTES_EQUIPOS);
+        panelContenido.add(new ClientesMaquinariosPanel(), CARD_CLIENTES_MAQUINARIOS);
         panelContenido.add(new OrdenesServicioPanel(), CARD_ORDENES_SERVICIO);
         panelContenido.add(new ComprasProveedoresPanel(), CARD_COMPRAS_PROVEEDORES);
         panelContenido.add(new FinancieroPanel(), CARD_FINANCIERO);

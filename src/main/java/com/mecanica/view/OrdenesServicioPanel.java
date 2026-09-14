@@ -2,7 +2,7 @@ package com.mecanica.view;
 
 import com.mecanica.controller.OrdenDeServicioController;
 import com.mecanica.enums.EstadoOrdenServicio;
-import com.mecanica.model.Equipo;
+import com.mecanica.model.Maquinario;
 import com.mecanica.model.OrdenDeServicio;
 
 import javax.swing.*;
@@ -27,7 +27,7 @@ import java.util.List;
  *
  * Las llamadas al Controller (que abren Session de Hibernate) corren en
  * SwingWorker para no trabar la interfaz, siguiendo el mismo patron ya
- * usado en ClientesEquiposPanel.
+ * usado en ClientesMaquinariosPanel.
  */
 public class OrdenesServicioPanel extends JPanel {
 
@@ -360,7 +360,7 @@ public class OrdenesServicioPanel extends JPanel {
     // ---------------------------------------------------------------- Modelo de tabla
 
     private static class TablaOrdenesModel extends AbstractTableModel {
-        private static final String[] COLUMNAS = {"N°", "Cliente", "Equipo", "Fecha Apertura", "Estado", "Valor Total (Gs.)"};
+        private static final String[] COLUMNAS = {"N°", "Cliente", "Maquinario", "Fecha Apertura", "Estado", "Valor Total (Gs.)"};
         private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
         private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -399,7 +399,7 @@ public class OrdenesServicioPanel extends JPanel {
                 case 1:
                     return os.getCliente() == null ? "" : os.getCliente().getNombre();
                 case 2:
-                    return formatoEquipo(os.getEquipo());
+                    return formatoMaquinario(os.getMaquinario());
                 case 3:
                     return os.getFechaApertura() == null ? "" : os.getFechaApertura().format(FORMATO_FECHA);
                 case 4:
@@ -411,14 +411,14 @@ public class OrdenesServicioPanel extends JPanel {
             }
         }
 
-        private String formatoEquipo(Equipo equipo) {
-            if (equipo == null) {
+        private String formatoMaquinario(Maquinario maquinario) {
+            if (maquinario == null) {
                 return "";
             }
-            if (equipo.getIdentificacion() != null && !equipo.getIdentificacion().isBlank()) {
-                return equipo.getTipo() + " - " + equipo.getIdentificacion();
+            if (maquinario.getIdentificacion() != null && !maquinario.getIdentificacion().isBlank()) {
+                return maquinario.getTipo() + " - " + maquinario.getIdentificacion();
             }
-            return equipo.getTipo().toString();
+            return maquinario.getTipo().toString();
         }
     }
 }

@@ -28,7 +28,7 @@ import java.util.List;
  *
  * Las llamadas al Controller (que abren Session de Hibernate) corren en
  * SwingWorker para no trabar la interfaz, siguiendo el mismo patron ya
- * usado en ClientesEquiposPanel.
+ * usado en ClientesMaquinariosPanel.
  */
 public class ComprasProveedoresPanel extends JPanel {
 

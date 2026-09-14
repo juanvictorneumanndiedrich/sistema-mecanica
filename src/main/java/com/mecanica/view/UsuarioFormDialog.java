@@ -28,7 +28,7 @@ public class UsuarioFormDialog extends JDialog {
     private final JPasswordField campoClaveInicial = new JPasswordField();
     private final JCheckBox checkActivo = new JCheckBox("Activo", true);
 
-    private final JCheckBox checkClientesEquipos = new JCheckBox("Clientes y Equipos");
+    private final JCheckBox checkClientesMaquinarios = new JCheckBox("Clientes y Maquinarios");
     private final JCheckBox checkOrdenesServicio = new JCheckBox("Ordenes de Servicio");
     private final JCheckBox checkComprasProveedores = new JCheckBox("Compras y Proveedores");
     private final JCheckBox checkFinanciero = new JCheckBox("Financiero");
@@ -101,7 +101,7 @@ public class UsuarioFormDialog extends JDialog {
         formulario.add(labelPermisos, gbc);
 
         JCheckBox[] checks = {
-                checkClientesEquipos, checkOrdenesServicio, checkComprasProveedores,
+                checkClientesMaquinarios, checkOrdenesServicio, checkComprasProveedores,
                 checkFinanciero, checkEmpleadosSocios, checkUsuarios
         };
         for (int i = 0; i < checks.length; i++) {
@@ -168,7 +168,7 @@ public class UsuarioFormDialog extends JDialog {
         campoNombre.setText(usuario.getNombre());
         campoLogin.setText(usuario.getLogin());
         checkActivo.setSelected(usuario.isActivo());
-        checkClientesEquipos.setSelected(usuario.isPermisoClientesEquipos());
+        checkClientesMaquinarios.setSelected(usuario.isPermisoClientesMaquinarios());
         checkOrdenesServicio.setSelected(usuario.isPermisoOrdenesServicio());
         checkComprasProveedores.setSelected(usuario.isPermisoComprasProveedores());
         checkFinanciero.setSelected(usuario.isPermisoFinanciero());
@@ -203,7 +203,7 @@ public class UsuarioFormDialog extends JDialog {
         usuario.setNombre(nombre);
         usuario.setLogin(login);
         usuario.setActivo(checkActivo.isSelected());
-        usuario.setPermisoClientesEquipos(checkClientesEquipos.isSelected());
+        usuario.setPermisoClientesMaquinarios(checkClientesMaquinarios.isSelected());
         usuario.setPermisoOrdenesServicio(checkOrdenesServicio.isSelected());
         usuario.setPermisoComprasProveedores(checkComprasProveedores.isSelected());
         usuario.setPermisoFinanciero(checkFinanciero.isSelected());

@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * DAO especifico de Cliente. Ejemplo de como extender AbstractGenericDAO
  * y agregar busquedas propias de la entidad -- los otros 12 DAOs
- * (EquipoDAO, OrdenDeServicioDAO, UsuarioDAO, ProveedorDAO,
+ * (MaquinarioDAO, OrdenDeServicioDAO, UsuarioDAO, ProveedorDAO,
  * CompraDAO, CierreProveedorDAO, EmpleadoDAO,
  * RetiroEmpleadoDAO, SocioDAO, RetiroSocioDAO,
  * MovimientoFinancieroDAO, ItemOrdenServicioDAO) siguen exactamente el mismo
@@ -22,7 +22,7 @@ public class ClienteDAO extends AbstractGenericDAO<Cliente, Long> {
         super(Cliente.class);
     }
 
-    /** Busqueda por nombre (que contenga el texto), usada en la pantalla de Clientes y Equipos. */
+    /** Busqueda por nombre (que contenga el texto), usada en la pantalla de Clientes y Maquinarios. */
     public List<Cliente> buscarPorNombre(String nombre) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             String hql = "FROM Cliente c WHERE LOWER(c.nombre) LIKE LOWER(:nombre) ORDER BY c.nombre";

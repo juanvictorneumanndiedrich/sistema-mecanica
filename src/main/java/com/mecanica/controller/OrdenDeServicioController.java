@@ -3,7 +3,7 @@ package com.mecanica.controller;
 import com.mecanica.dao.OrdenDeServicioDAO;
 import com.mecanica.enums.EstadoOrdenServicio;
 import com.mecanica.model.Cliente;
-import com.mecanica.model.Equipo;
+import com.mecanica.model.Maquinario;
 import com.mecanica.model.OrdenDeServicio;
 
 import java.math.BigDecimal;
@@ -20,16 +20,16 @@ public class OrdenDeServicioController {
     private final OrdenDeServicioDAO ordemDeServicoDAO = new OrdenDeServicioDAO();
 
     /** Abre una nueva OS, generando el proximo numero secuencial automaticamente. */
-    public OrdenDeServicio abrir(Cliente cliente, Equipo equipo, String problemaReportado) {
-        if (cliente == null || equipo == null) {
-            throw new IllegalArgumentException("El cliente y el equipo son obligatorios para abrir una OS.");
+    public OrdenDeServicio abrir(Cliente cliente, Maquinario maquinario, String problemaReportado) {
+        if (cliente == null || maquinario == null) {
+            throw new IllegalArgumentException("El cliente y el maquinario son obligatorios para abrir una OS.");
         }
         Long mayorNumero = ordemDeServicoDAO.buscarMayorNumero();
 
         OrdenDeServicio os = new OrdenDeServicio();
         os.setNumero(mayorNumero == null ? 1L : mayorNumero + 1);
         os.setCliente(cliente);
-        os.setEquipo(equipo);
+        os.setMaquinario(maquinario);
         os.setFechaApertura(LocalDate.now());
         os.setEstado(EstadoOrdenServicio.ABIERTA);
         os.setProblemaReportado(problemaReportado);
