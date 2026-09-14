@@ -22,7 +22,7 @@
 		<mapping class="com.mecanica.model.Socio"/>
 		<mapping class="com.mecanica.model.Empleado"/>
 		<mapping class="com.mecanica.model.Cliente"/>
-		<mapping class="com.mecanica.model.Equipo"/>
+		<mapping class="com.mecanica.model.Maquinario"/>
 		<mapping class="com.mecanica.model.Proveedor"/>
 		<mapping class="com.mecanica.model.OrdenDeServicio"/>
 		<mapping class="com.mecanica.model.ItemOrdenServicio"/>
