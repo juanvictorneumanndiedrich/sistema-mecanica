@@ -7,7 +7,7 @@
 		<property name="connection.url">
 			jdbc:postgresql://localhost:5432/tallerjb</property>
 		<property name="connection.username">postgres</property>
-		<property name="connection.password">12345</property>
+		<property name="connection.password">123456</property>
 
 		<property name="dialect">org.hibernate.dialect.PostgreSQLDialect</property>
 
