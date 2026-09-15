@@ -1,5 +1,6 @@
 package com.mecanica.view;
 
+import com.mecanica.controller.ChequePreDatadoController;
 import com.mecanica.controller.CompraController;
 import com.mecanica.controller.ProveedorController;
 import com.mecanica.enums.EstadoCompra;
@@ -43,6 +44,7 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
 
     private final ProveedorController proveedorController = new ProveedorController();
     private final CompraController compraController = new CompraController();
+    private final ChequePreDatadoController chequeController = new ChequePreDatadoController();
 
     private final TablaProveedoresModel modeloProveedores = new TablaProveedoresModel();
     private final TablaComprasModel modeloCompras = new TablaComprasModel();
@@ -492,7 +494,13 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
             @Override
             protected Void doInBackground() {
                 try {
-                    proveedorController.registrarPagamento(seleccionado, dialogo.getValor(), dialogo.getDescripcion());
+                    if (dialogo.isChequePreDatado()) {
+                        chequeController.registrarDeProveedor(seleccionado, dialogo.getNumeroCheque(),
+                                dialogo.getBanco(), dialogo.getFechaVencimiento(), dialogo.getValor(),
+                                dialogo.getDescripcion());
+                    } else {
+                        proveedorController.registrarPagamento(seleccionado, dialogo.getValor(), dialogo.getDescripcion());
+                    }
                 } catch (RuntimeException e) {
                     error = e;
                 }

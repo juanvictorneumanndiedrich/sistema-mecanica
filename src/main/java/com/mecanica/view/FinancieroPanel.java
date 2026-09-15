@@ -1,8 +1,10 @@
 package com.mecanica.view;
 
+import com.mecanica.controller.ChequePreDatadoController;
 import com.mecanica.controller.MovimientoFinancieroController;
 import com.mecanica.enums.CategoriaMovimientoFinanciero;
 import com.mecanica.enums.TipoMovimientoFinanciero;
+import com.mecanica.model.ChequePreDatado;
 import com.mecanica.model.MovimientoFinanciero;
 
 import javax.swing.*;
@@ -22,11 +24,14 @@ import java.util.List;
  * filtrado por periodo (fecha desde/hasta) y, opcionalmente, por categoria,
  * con el saldo del periodo (ver MovimientoFinancieroController.calcularSaldoPeriodo).
  *
- * Es una pantalla mayormente de solo lectura -- los movimientos los generan
- * otros flujos del sistema (pago de cliente, compra a proveedor, retiro de
- * empleado). La unica accion de escritura aca es "Nuevo Movimiento", que
- * abre MovimientoManualDialog para registrar un movimiento manual (siempre
- * con categoria OTRO, ver MovimientoFinancieroController.registrarMovimientoManual).
+ * Tiene dos pestañas: "Movimientos" (el extracto de siempre, mayormente de
+ * solo lectura -- los movimientos los generan otros flujos del sistema:
+ * pago de cliente, compra a proveedor, retiro de empleado, o un cheque
+ * pre-datado que ya vencio y fue confirmado) y "Cheques Pendientes" (los
+ * cheques pre-datados que todavia no vencieron/no fueron confirmados -- ver
+ * ChequePreDatadoController). La unica accion de escritura en la pestaña de
+ * Movimientos es "Nuevo Movimiento", que abre MovimientoManualDialog para
+ * registrar un movimiento manual (siempre con categoria OTRO).
  *
  * Las llamadas al Controller (que abren Session de Hibernate) corren en
  * SwingWorker para no trabar la interfaz, siguiendo el mismo patron ya
@@ -39,6 +44,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
     private static final String TODAS_LAS_CATEGORIAS = "(todas)";
 
     private final MovimientoFinancieroController movimientoFinancieroController = new MovimientoFinancieroController();
+    private final ChequePreDatadoController chequeController = new ChequePreDatadoController();
 
     private final TablaMovimientosModel modeloMovimientos = new TablaMovimientosModel();
     private final JTable tablaMovimientos = new JTable(modeloMovimientos);
@@ -48,6 +54,11 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
     private final JComboBox<String> comboCategoria = new JComboBox<>();
     private final JLabel labelError = new JLabel(" ");
     private final JLabel labelSaldo = new JLabel(" ");
+
+    private final TablaChequesPendientesModel modeloCheques = new TablaChequesPendientesModel();
+    private final JTable tablaCheques = new JTable(modeloCheques);
+    private final BotonPlano botonConfirmarCheque = new BotonPlano("CONFIRMAR CHEQUE (VENCIDO)");
+    private final JLabel labelErrorCheques = new JLabel(" ");
 
     public FinancieroPanel() {
         super(new BorderLayout());
@@ -63,32 +74,48 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
             comboCategoria.addItem(categoria.name());
         }
 
-        add(armarEncabezado(), BorderLayout.NORTH);
-        add(armarCentro(), BorderLayout.CENTER);
-        add(armarPie(), BorderLayout.SOUTH);
+        JLabel titulo = new JLabel("Financiero");
+        titulo.setFont(new Font("Segoe UI", Font.BOLD, 17));
+        titulo.setForeground(Paleta.AZUL_OSCURO);
+        titulo.setBorder(BorderFactory.createEmptyBorder(0, 0, 12, 0));
+        add(titulo, BorderLayout.NORTH);
+
+        JTabbedPane pestañas = new JTabbedPane();
+        pestañas.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        pestañas.addTab("Movimientos", armarPestañaMovimientos());
+        pestañas.addTab("Cheques Pendientes", armarPestañaCheques());
+        add(pestañas, BorderLayout.CENTER);
 
         buscarMovimientos();
+        cargarChequesPendientes();
     }
 
-    /** Vuelve a buscar los movimientos con el mismo periodo/categoria filtrados al entrar en esta area. */
+    /** Vuelve a buscar los movimientos y los cheques pendientes al entrar en esta area. */
     @Override
     public void actualizar() {
         buscarMovimientos();
+        cargarChequesPendientes();
     }
 
-    // ---------------------------------------------------------------- Armado de pantalla
+    // ---------------------------------------------------------------- Pestaña Movimientos
 
-    private JComponent armarEncabezado() {
+    private JComponent armarPestañaMovimientos() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
+
+        panel.add(armarEncabezadoMovimientos(), BorderLayout.NORTH);
+        panel.add(armarCentroMovimientos(), BorderLayout.CENTER);
+        panel.add(armarPieMovimientos(), BorderLayout.SOUTH);
+        return panel;
+    }
+
+    private JComponent armarEncabezadoMovimientos() {
         JPanel panel = new JPanel(new BorderLayout(0, 12));
         panel.setOpaque(false);
 
         JPanel encabezado = new JPanel(new BorderLayout(8, 0));
         encabezado.setOpaque(false);
-
-        JLabel titulo = new JLabel("Financiero");
-        titulo.setFont(new Font("Segoe UI", Font.BOLD, 17));
-        titulo.setForeground(Paleta.AZUL_OSCURO);
-        encabezado.add(titulo, BorderLayout.WEST);
 
         BotonPlano botonNuevoMovimiento = new BotonPlano("NUEVO MOVIMIENTO");
         botonNuevoMovimiento.addActionListener(e -> onNuevoMovimiento());
@@ -149,7 +176,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         return panel;
     }
 
-    private JComponent armarCentro() {
+    private JComponent armarCentroMovimientos() {
         JPanel panel = new JPanel(new BorderLayout(0, 8));
         panel.setOpaque(false);
         panel.setBorder(BorderFactory.createEmptyBorder(14, 0, 0, 0));
@@ -164,7 +191,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         return panel;
     }
 
-    private JComponent armarPie() {
+    private JComponent armarPieMovimientos() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setOpaque(false);
         panel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
@@ -172,6 +199,39 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         labelSaldo.setFont(new Font("Segoe UI", Font.BOLD, 15));
         labelSaldo.setForeground(Paleta.AZUL_OSCURO);
         panel.add(labelSaldo, BorderLayout.EAST);
+        return panel;
+    }
+
+    // ---------------------------------------------------------------- Pestaña Cheques Pendientes
+
+    private JComponent armarPestañaCheques() {
+        JPanel panel = new JPanel(new BorderLayout(0, 8));
+        panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
+
+        JLabel explicacion = new JLabel(
+                "Cheques pre-datados (de clientes o para proveedores) que ya descontaron el saldo, "
+                        + "pero todavia no generaron el movimiento en Financiero -- eso pasa recien al confirmar.");
+        explicacion.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        explicacion.setForeground(Paleta.GRIS_TEXTO);
+        panel.add(explicacion, BorderLayout.NORTH);
+
+        estilizarTabla(tablaCheques);
+        tablaCheques.getColumnModel().getColumn(4).setCellRenderer(new ColorVencimientoRenderer(modeloCheques));
+        panel.add(new JScrollPane(tablaCheques), BorderLayout.CENTER);
+
+        JPanel pie = new JPanel(new BorderLayout());
+        pie.setOpaque(false);
+        pie.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
+
+        labelErrorCheques.setForeground(Paleta.ROJO_ERROR);
+        labelErrorCheques.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        pie.add(labelErrorCheques, BorderLayout.WEST);
+
+        botonConfirmarCheque.addActionListener(e -> onConfirmarCheque());
+        pie.add(botonConfirmarCheque, BorderLayout.EAST);
+        panel.add(pie, BorderLayout.SOUTH);
+
         return panel;
     }
 
@@ -187,7 +247,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         tabla.setFillsViewportHeight(true);
     }
 
-    // ---------------------------------------------------------------- Carga de datos
+    // ---------------------------------------------------------------- Carga de datos (Movimientos)
 
     /** Lee los filtros de pantalla, valida las fechas y recarga tabla + saldo. */
     private void buscarMovimientos() {
@@ -298,6 +358,88 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         }.execute();
     }
 
+    // ---------------------------------------------------------------- Carga de datos (Cheques)
+
+    private void cargarChequesPendientes() {
+        labelErrorCheques.setText(" ");
+        setHabilitado(false);
+        new SwingWorker<List<ChequePreDatado>, Void>() {
+            Exception error;
+
+            @Override
+            protected List<ChequePreDatado> doInBackground() {
+                try {
+                    return chequeController.listarPendientes();
+                } catch (Exception e) {
+                    error = e;
+                    return List.of();
+                }
+            }
+
+            @Override
+            protected void done() {
+                setHabilitado(true);
+                List<ChequePreDatado> resultado;
+                try {
+                    resultado = get();
+                } catch (Exception e) {
+                    error = e;
+                    resultado = List.of();
+                }
+                if (error != null) {
+                    mostrarErrorConexion();
+                    return;
+                }
+                modeloCheques.setDatos(resultado);
+            }
+        }.execute();
+    }
+
+    private void onConfirmarCheque() {
+        labelErrorCheques.setText(" ");
+        int filaSeleccionada = tablaCheques.getSelectedRow();
+        if (filaSeleccionada < 0) {
+            labelErrorCheques.setText("Seleccione un cheque en la lista.");
+            return;
+        }
+        ChequePreDatado seleccionado = modeloCheques.getCheque(tablaCheques.convertRowIndexToModel(filaSeleccionada));
+
+        int opcion = JOptionPane.showConfirmDialog(this,
+                "Confirmar que el cheque de Gs. " + new DecimalFormat("#,##0").format(seleccionado.getValor())
+                        + " ya vencio y se compenso? Esto va a generar el movimiento correspondiente en Financiero.",
+                "Confirmar cheque", JOptionPane.YES_NO_OPTION);
+        if (opcion != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        setHabilitado(false);
+        new SwingWorker<Void, Void>() {
+            RuntimeException error;
+
+            @Override
+            protected Void doInBackground() {
+                try {
+                    chequeController.confirmar(seleccionado);
+                } catch (RuntimeException e) {
+                    error = e;
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                setHabilitado(true);
+                if (error != null) {
+                    JOptionPane.showMessageDialog(FinancieroPanel.this,
+                            error.getMessage(), "No fue posible confirmar", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                cargarChequesPendientes();
+                buscarMovimientos();
+            }
+        }.execute();
+    }
+
     private void setHabilitado(boolean habilitado) {
         setCursor(habilitado ? Cursor.getDefaultCursor() : Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
     }
@@ -346,6 +488,26 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
             componente.setForeground(movimiento.getTipo() == TipoMovimientoFinanciero.ENTRADA
                     ? Paleta.VERDE_EXITO
                     : Paleta.ROJO_ERROR);
+            return componente;
+        }
+    }
+
+    /** Pinta la columna "Vencimiento": rojo si ya vencio (listo para confirmar), color normal si todavia no. */
+    private static class ColorVencimientoRenderer extends DefaultTableCellRenderer {
+        private final TablaChequesPendientesModel modelo;
+
+        ColorVencimientoRenderer(TablaChequesPendientesModel modelo) {
+            this.modelo = modelo;
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable tabla, Object valor, boolean seleccionado,
+                boolean conFoco, int fila, int columna) {
+            Component componente = super.getTableCellRendererComponent(tabla, valor, seleccionado, conFoco, fila, columna);
+            ChequePreDatado cheque = modelo.getCheque(tabla.convertRowIndexToModel(fila));
+            boolean vencido = cheque.getFechaVencimiento() != null
+                    && !cheque.getFechaVencimiento().isAfter(LocalDate.now());
+            componente.setForeground(vencido ? Paleta.ROJO_ERROR : Paleta.GRIS_TEXTO);
             return componente;
         }
     }
@@ -399,6 +561,62 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
                     return movimiento.getTipo() == TipoMovimientoFinanciero.SALIDA
                             ? "-" + valorFormateado
                             : valorFormateado;
+                default:
+                    return "";
+            }
+        }
+    }
+
+    /** Tabla de la pestaña "Cheques Pendientes": mezcla cheques de clientes y de proveedores. */
+    private static class TablaChequesPendientesModel extends AbstractTableModel {
+        private static final String[] COLUMNAS =
+                {"Origen", "Nombre", "N° Cheque", "Banco", "Vencimiento", "Valor (Gs.)"};
+        private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
+        private static final DateTimeFormatter FORMATO_FECHA_TABLA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+        private List<ChequePreDatado> cheques = List.of();
+
+        void setDatos(List<ChequePreDatado> cheques) {
+            this.cheques = cheques;
+            fireTableDataChanged();
+        }
+
+        ChequePreDatado getCheque(int fila) {
+            return cheques.get(fila);
+        }
+
+        @Override
+        public int getRowCount() {
+            return cheques.size();
+        }
+
+        @Override
+        public int getColumnCount() {
+            return COLUMNAS.length;
+        }
+
+        @Override
+        public String getColumnName(int columna) {
+            return COLUMNAS[columna];
+        }
+
+        @Override
+        public Object getValueAt(int fila, int columna) {
+            ChequePreDatado cheque = cheques.get(fila);
+            boolean esDeCliente = cheque.getCliente() != null;
+            switch (columna) {
+                case 0:
+                    return esDeCliente ? "Cliente" : "Proveedor";
+                case 1:
+                    return esDeCliente ? cheque.getCliente().getNombre() : cheque.getProveedor().getNombre();
+                case 2:
+                    return cheque.getNumeroCheque() == null ? "" : cheque.getNumeroCheque();
+                case 3:
+                    return cheque.getBanco() == null ? "" : cheque.getBanco();
+                case 4:
+                    return cheque.getFechaVencimiento() == null ? "" : cheque.getFechaVencimiento().format(FORMATO_FECHA_TABLA);
+                case 5:
+                    return FORMATO_VALOR.format(cheque.getValor() == null ? BigDecimal.ZERO : cheque.getValor());
                 default:
                     return "";
             }

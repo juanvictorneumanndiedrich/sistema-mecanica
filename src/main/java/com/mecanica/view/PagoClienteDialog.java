@@ -3,20 +3,40 @@ package com.mecanica.view;
 import javax.swing.*;
 import java.awt.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 /**
- * Dialogo modal para registrar un pago de un Cliente. El valor descuenta
- * directamente el SALDO GENERAL del cliente (no una Orden de Servicio
- * especifica) -- ver ClienteController.registrarPagamento.
+ * Dialogo modal para registrar un pago de un Cliente. Por defecto el valor
+ * descuenta directamente el SALDO GENERAL del cliente y ya genera el
+ * MovimientoFinanciero (ver ClienteController.registrarPagamento).
+ *
+ * Si se marca "CHEQUE PRE-DATADO", el saldo tambien se descuenta en el
+ * acto, pero el MovimientoFinanciero (la entrada real en Financiero) queda
+ * pendiente hasta que el cheque venza y sea confirmado en la pestaña
+ * "Cheques Pendientes" de la pantalla Financiero -- ver
+ * ChequePreDatadoController.registrarDeCliente/confirmar.
  */
 public class PagoClienteDialog extends JDialog {
 
+    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
     private final JTextField campoValor = new JTextField();
     private final JTextField campoDescripcion = new JTextField();
+    private final JCheckBox checkChequePreDatado = new JCheckBox("ES UN CHEQUE PRE-DATADO");
+    private final JTextField campoNumeroCheque = new JTextField();
+    private final JTextField campoBanco = new JTextField();
+    private final JTextField campoVencimiento = new JTextField();
+    private final JPanel panelCheque = new JPanel(new GridBagLayout());
     private final JLabel labelError = new JLabel(" ");
 
     private BigDecimal valor;
     private String descripcion;
+    private boolean chequePreDatado;
+    private String numeroCheque;
+    private String banco;
+    private LocalDate fechaVencimiento;
     private boolean confirmado;
 
     public PagoClienteDialog(Window propietario, String nombreCliente) {
@@ -36,8 +56,24 @@ public class PagoClienteDialog extends JDialog {
         return descripcion;
     }
 
+    public boolean isChequePreDatado() {
+        return chequePreDatado;
+    }
+
+    public String getNumeroCheque() {
+        return numeroCheque;
+    }
+
+    public String getBanco() {
+        return banco;
+    }
+
+    public LocalDate getFechaVencimiento() {
+        return fechaVencimiento;
+    }
+
     private void armarPantalla() {
-        setSize(360, 280);
+        setSize(380, 460);
         setResizable(false);
         setLayout(new BorderLayout());
 
@@ -75,9 +111,23 @@ public class PagoClienteDialog extends JDialog {
         gbc.insets = new Insets(4, 0, 0, 0);
         formulario.add(campoDescripcion, gbc);
 
+        checkChequePreDatado.setOpaque(false);
+        checkChequePreDatado.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        checkChequePreDatado.setForeground(Paleta.GRIS_TEXTO);
+        checkChequePreDatado.addActionListener(e -> alternarPanelCheque());
+        gbc.gridy = 4;
+        gbc.insets = new Insets(16, 0, 0, 0);
+        formulario.add(checkChequePreDatado, gbc);
+
+        armarPanelCheque();
+        panelCheque.setVisible(false);
+        gbc.gridy = 5;
+        gbc.insets = new Insets(6, 0, 0, 0);
+        formulario.add(panelCheque, gbc);
+
         labelError.setForeground(Paleta.ROJO_ERROR);
         labelError.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        gbc.gridy = 4;
+        gbc.gridy = 6;
         gbc.insets = new Insets(10, 0, 0, 0);
         formulario.add(labelError, gbc);
 
@@ -89,13 +139,64 @@ public class PagoClienteDialog extends JDialog {
         botonGuardar.addActionListener(e -> onRegistrar());
         botones.add(botonCancelar);
         botones.add(botonGuardar);
-        gbc.gridy = 5;
+        gbc.gridy = 7;
         gbc.insets = new Insets(16, 0, 0, 0);
         formulario.add(botones, gbc);
 
         getRootPane().setDefaultButton(botonGuardar);
         add(formulario, BorderLayout.CENTER);
         setLocationRelativeTo(getOwner());
+    }
+
+    private void armarPanelCheque() {
+        panelCheque.setOpaque(false);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
+
+        JLabel labelNumero = new JLabel("NÚMERO DE CHEQUE");
+        labelNumero.setForeground(Paleta.GRIS_TEXTO);
+        labelNumero.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        gbc.gridy = 0;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        panelCheque.add(labelNumero, gbc);
+
+        estilizarCampo(campoNumeroCheque);
+        gbc.gridy = 1;
+        gbc.insets = new Insets(4, 0, 0, 0);
+        panelCheque.add(campoNumeroCheque, gbc);
+
+        JLabel labelBanco = new JLabel("BANCO");
+        labelBanco.setForeground(Paleta.GRIS_TEXTO);
+        labelBanco.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        gbc.gridy = 2;
+        gbc.insets = new Insets(10, 0, 0, 0);
+        panelCheque.add(labelBanco, gbc);
+
+        estilizarCampo(campoBanco);
+        gbc.gridy = 3;
+        gbc.insets = new Insets(4, 0, 0, 0);
+        panelCheque.add(campoBanco, gbc);
+
+        JLabel labelVencimiento = new JLabel("FECHA DE VENCIMIENTO (dd/mm/aaaa) *");
+        labelVencimiento.setForeground(Paleta.GRIS_TEXTO);
+        labelVencimiento.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        gbc.gridy = 4;
+        gbc.insets = new Insets(10, 0, 0, 0);
+        panelCheque.add(labelVencimiento, gbc);
+
+        estilizarCampo(campoVencimiento);
+        gbc.gridy = 5;
+        gbc.insets = new Insets(4, 0, 0, 0);
+        panelCheque.add(campoVencimiento, gbc);
+    }
+
+    private void alternarPanelCheque() {
+        panelCheque.setVisible(checkChequePreDatado.isSelected());
+        revalidate();
+        repaint();
     }
 
     private void estilizarCampo(JTextField campo) {
@@ -119,6 +220,27 @@ public class PagoClienteDialog extends JDialog {
         } catch (NumberFormatException e) {
             labelError.setText("Ingrese un valor numerico valido.");
             return;
+        }
+
+        if (checkChequePreDatado.isSelected()) {
+            String textoVencimiento = campoVencimiento.getText().trim();
+            LocalDate vencimiento;
+            try {
+                vencimiento = LocalDate.parse(textoVencimiento, FORMATO_FECHA);
+            } catch (DateTimeParseException e) {
+                labelError.setText("Ingrese la fecha de vencimiento en formato dd/mm/aaaa.");
+                return;
+            }
+            if (vencimiento.isBefore(LocalDate.now())) {
+                labelError.setText("La fecha de vencimiento no puede ser anterior a hoy.");
+                return;
+            }
+            chequePreDatado = true;
+            fechaVencimiento = vencimiento;
+            numeroCheque = campoNumeroCheque.getText().trim();
+            banco = campoBanco.getText().trim();
+        } else {
+            chequePreDatado = false;
         }
 
         descripcion = campoDescripcion.getText().trim();

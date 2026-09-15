@@ -1,5 +1,6 @@
 package com.mecanica.view;
 
+import com.mecanica.controller.ChequePreDatadoController;
 import com.mecanica.controller.ClienteController;
 import com.mecanica.controller.MaquinarioController;
 import com.mecanica.model.Cliente;
@@ -28,6 +29,7 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
 
     private final ClienteController clienteController = new ClienteController();
     private final MaquinarioController maquinarioController = new MaquinarioController();
+    private final ChequePreDatadoController chequeController = new ChequePreDatadoController();
 
     private final TablaClientesModel modeloClientes = new TablaClientesModel();
     private final TablaMaquinariosModel modeloMaquinarios = new TablaMaquinariosModel();
@@ -399,7 +401,13 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
             @Override
             protected Void doInBackground() {
                 try {
-                    clienteController.registrarPagamento(seleccionado, dialogo.getValor(), dialogo.getDescripcion());
+                    if (dialogo.isChequePreDatado()) {
+                        chequeController.registrarDeCliente(seleccionado, dialogo.getNumeroCheque(),
+                                dialogo.getBanco(), dialogo.getFechaVencimiento(), dialogo.getValor(),
+                                dialogo.getDescripcion());
+                    } else {
+                        clienteController.registrarPagamento(seleccionado, dialogo.getValor(), dialogo.getDescripcion());
+                    }
                 } catch (RuntimeException e) {
                     error = e;
                 }
