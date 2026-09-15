@@ -8,7 +8,9 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Ventana principal, abierta despues del login. Barra superior azul,
@@ -32,6 +34,15 @@ public class MainView extends JFrame {
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel panelContenido = new JPanel(cardLayout);
     private final List<BotonMenu> botonesMenu = new ArrayList<>();
+
+    /**
+     * Paneles que saben recargar sus propios datos (ver PanelActualizable),
+     * indexados por el nombre de card. Se usa en seleccionarArea() para que
+     * cualquier cambio hecho en otra pantalla (un pago, el cierre de una OS,
+     * etc.) ya aparezca actualizado en cuanto el usuario entra de nuevo en
+     * esa area, sin tener que cerrar y abrir el sistema.
+     */
+    private final Map<String, PanelActualizable> panelesActualizables = new LinkedHashMap<>();
 
     public MainView(Usuario usuarioLogueado) {
         super("Taller JB");
@@ -144,24 +155,40 @@ public class MainView extends JFrame {
         return boton;
     }
 
-    /** Marca el boton elegido y muestra el area correspondiente. */
+    /**
+     * Marca el boton elegido, muestra el area correspondiente y le pide al
+     * panel que recargue sus datos -- asi cualquier cambio hecho en otra
+     * pantalla ya aparece actualizado.
+     */
     private void seleccionarArea(BotonMenu elegido, String nombreCard) {
         for (BotonMenu boton : botonesMenu) {
             boton.setSeleccionado(boton == elegido);
         }
         cardLayout.show(panelContenido, nombreCard);
+        PanelActualizable panel = panelesActualizables.get(nombreCard);
+        if (panel != null) {
+            panel.actualizar();
+        }
     }
 
     private JComponent armarContenido() {
         panelContenido.setBackground(Paleta.GRIS_FONDO);
-        panelContenido.add(new ClientesMaquinariosPanel(), CARD_CLIENTES_MAQUINARIOS);
-        panelContenido.add(new OrdenesServicioPanel(), CARD_ORDENES_SERVICIO);
-        panelContenido.add(new ComprasProveedoresPanel(), CARD_COMPRAS_PROVEEDORES);
-        panelContenido.add(new FinancieroPanel(), CARD_FINANCIERO);
-        panelContenido.add(new EmpleadosSociosPanel(), CARD_EMPLEADOS_SOCIOS);
-        panelContenido.add(new UsuariosPanel(), CARD_USUARIOS);
+        agregarArea(CARD_CLIENTES_MAQUINARIOS, new ClientesMaquinariosPanel());
+        agregarArea(CARD_ORDENES_SERVICIO, new OrdenesServicioPanel());
+        agregarArea(CARD_COMPRAS_PROVEEDORES, new ComprasProveedoresPanel());
+        agregarArea(CARD_FINANCIERO, new FinancieroPanel());
+        agregarArea(CARD_EMPLEADOS_SOCIOS, new EmpleadosSociosPanel());
+        agregarArea(CARD_USUARIOS, new UsuariosPanel());
         panelContenido.add(crearPanelSinPermisos(), CARD_SIN_PERMISOS);
         return panelContenido;
+    }
+
+    /** Agrega el panel al CardLayout y lo guarda para poder actualizarlo despues. */
+    private void agregarArea(String nombreCard, JComponent panel) {
+        panelContenido.add(panel, nombreCard);
+        if (panel instanceof PanelActualizable actualizable) {
+            panelesActualizables.put(nombreCard, actualizable);
+        }
     }
 
     private JComponent crearPanelSinPermisos() {

@@ -29,7 +29,7 @@ import java.util.List;
  * SwingWorker para no trabar la interfaz, siguiendo el mismo patron ya
  * usado en ClientesMaquinariosPanel.
  */
-public class OrdenesServicioPanel extends JPanel {
+public class OrdenesServicioPanel extends JPanel implements PanelActualizable {
 
     private final OrdenDeServicioController ordenDeServicioController = new OrdenDeServicioController();
 
@@ -64,6 +64,12 @@ public class OrdenesServicioPanel extends JPanel {
         add(armarBotones(), BorderLayout.SOUTH);
 
         actualizarEstadoBotones();
+        cargarOrdenes();
+    }
+
+    /** Recarga la lista de ordenes al entrar en esta area. */
+    @Override
+    public void actualizar() {
         cargarOrdenes();
     }
 
@@ -413,7 +419,7 @@ public class OrdenesServicioPanel extends JPanel {
 
         private String formatoMaquinario(Maquinario maquinario) {
             if (maquinario == null) {
-                return "";
+                return "Servicio general";
             }
             if (maquinario.getIdentificacion() != null && !maquinario.getIdentificacion().isBlank()) {
                 return maquinario.getTipo() + " - " + maquinario.getIdentificacion();

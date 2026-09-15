@@ -36,7 +36,7 @@ import java.util.List;
  * SwingWorker para no trabar la interfaz, siguiendo el mismo patron ya
  * usado en ClientesMaquinariosPanel.
  */
-public class EmpleadosSociosPanel extends JPanel {
+public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
 
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
@@ -86,6 +86,13 @@ public class EmpleadosSociosPanel extends JPanel {
         actualizarEstadoBotonesEmpleado();
         actualizarEstadoBotonesSocio();
 
+        cargarEmpleados();
+        cargarSocios();
+    }
+
+    /** Recarga empleados y socios (las dos pestanias) al entrar en esta area. */
+    @Override
+    public void actualizar() {
         cargarEmpleados();
         cargarSocios();
     }

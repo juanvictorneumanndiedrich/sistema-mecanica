@@ -27,8 +27,14 @@ public class OrdenDeServicio {
     @JoinColumn(name = "cliente_id", nullable = false)
     private Cliente cliente;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "maquinario_id", nullable = false)
+    /**
+     * Opcional: hay servicios simples (cortar un pedazo de chapa, sacar un
+     * tornillo, enderezar algo) que no estan ligados a ningun maquinario
+     * especifico del cliente -- en ese caso este campo queda en null y la OS
+     * se trata como "servicio general".
+     */
+    @ManyToOne
+    @JoinColumn(name = "maquinario_id")
     private Maquinario maquinario;
 
     @Column(name = "fecha_apertura", nullable = false)

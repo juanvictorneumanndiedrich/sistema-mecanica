@@ -5,6 +5,9 @@ import com.mecanica.enums.EstadoOrdenServicio;
 import com.mecanica.model.Cliente;
 import com.mecanica.model.Maquinario;
 import com.mecanica.model.OrdenDeServicio;
+import com.mecanica.util.HibernateUtil;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -19,10 +22,14 @@ public class OrdenDeServicioController {
 
     private final OrdenDeServicioDAO ordemDeServicoDAO = new OrdenDeServicioDAO();
 
-    /** Abre una nueva OS, generando el proximo numero secuencial automaticamente. */
+    /**
+     * Abre una nueva OS, generando el proximo numero secuencial automaticamente.
+     * El maquinario es opcional -- una OS puede ser un "servicio general" sin
+     * maquinario especifico (ej: cortar chapa, sacar un tornillo).
+     */
     public OrdenDeServicio abrir(Cliente cliente, Maquinario maquinario, String problemaReportado) {
-        if (cliente == null || maquinario == null) {
-            throw new IllegalArgumentException("El cliente y el maquinario son obligatorios para abrir una OS.");
+        if (cliente == null) {
+            throw new IllegalArgumentException("El cliente es obligatorio para abrir una OS.");
         }
         Long mayorNumero = ordemDeServicoDAO.buscarMayorNumero();
 
@@ -37,11 +44,41 @@ public class OrdenDeServicioController {
         return ordemDeServicoDAO.guardar(os);
     }
 
-    /** Marca la OS como concluida y registra la fecha de cierre (para la impresion/firma del cliente). */
+    /**
+     * Marca la OS como concluida, registra la fecha de cierre (para la
+     * impresion/firma del cliente) y SUMA el valorTotal de la OS al saldo
+     * general del cliente -- recien en el cierre, porque es cuando el valor
+     * total ya quedo definitivo (mientras la OS esta abierta se le pueden
+     * seguir agregando/quitando items). Las dos operaciones ocurren en la
+     * misma transaccion, para nunca cerrar la OS sin actualizar el saldo (o
+     * vice-versa).
+     */
     public OrdenDeServicio cerrar(OrdenDeServicio os) {
-        os.setEstado(EstadoOrdenServicio.CONCLUIDA);
-        os.setFechaCierre(LocalDate.now());
-        return ordemDeServicoDAO.guardar(os);
+        if (os.getEstado() == EstadoOrdenServicio.CONCLUIDA || os.getEstado() == EstadoOrdenServicio.CANCELADA) {
+            throw new IllegalStateException("Esa OS ya esta cerrada o cancelada.");
+        }
+
+        Transaction tx = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            tx = session.beginTransaction();
+
+            OrdenDeServicio osGerenciada = session.get(OrdenDeServicio.class, os.getId());
+            osGerenciada.setEstado(EstadoOrdenServicio.CONCLUIDA);
+            osGerenciada.setFechaCierre(LocalDate.now());
+            session.merge(osGerenciada);
+
+            Cliente clienteGerenciado = session.get(Cliente.class, osGerenciada.getCliente().getId());
+            clienteGerenciado.setSaldo(clienteGerenciado.getSaldo().add(osGerenciada.getValorTotal()));
+            session.merge(clienteGerenciado);
+
+            tx.commit();
+            return osGerenciada;
+        } catch (RuntimeException e) {
+            if (tx != null && tx.isActive()) {
+                tx.rollback();
+            }
+            throw e;
+        }
     }
 
     public OrdenDeServicio cancelar(OrdenDeServicio os) {

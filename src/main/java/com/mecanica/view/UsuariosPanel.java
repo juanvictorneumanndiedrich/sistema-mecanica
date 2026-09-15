@@ -24,7 +24,7 @@ import java.util.List;
  * SwingWorker para no trabar la interfaz, siguiendo el mismo patron ya
  * usado en ClientesMaquinariosPanel.
  */
-public class UsuariosPanel extends JPanel {
+public class UsuariosPanel extends JPanel implements PanelActualizable {
 
     private final UsuarioController usuarioController = new UsuarioController();
 
@@ -45,6 +45,12 @@ public class UsuariosPanel extends JPanel {
         add(armarBotones(), BorderLayout.SOUTH);
 
         actualizarEstadoBotones();
+        cargarUsuarios();
+    }
+
+    /** Recarga la lista de usuarios al entrar en esta area. */
+    @Override
+    public void actualizar() {
         cargarUsuarios();
     }
 

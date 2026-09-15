@@ -30,7 +30,7 @@ import java.util.List;
  * SwingWorker para no trabar la interfaz, siguiendo el mismo patron ya
  * usado en ClientesMaquinariosPanel.
  */
-public class ComprasProveedoresPanel extends JPanel {
+public class ComprasProveedoresPanel extends JPanel implements PanelActualizable {
 
     private final ProveedorController proveedorController = new ProveedorController();
     private final CompraController compraController = new CompraController();
@@ -71,6 +71,13 @@ public class ComprasProveedoresPanel extends JPanel {
         actualizarEstadoBotonesDetalle();
         actualizarEstadoBotonMarcarPagado();
 
+        cargarProveedores(null);
+    }
+
+    /** Recarga la lista de proveedores (sin filtro de busqueda) al entrar en esta area. */
+    @Override
+    public void actualizar() {
+        campoBusqueda.setText("");
         cargarProveedores(null);
     }
 

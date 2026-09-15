@@ -6,8 +6,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Cliente de la mecanica/torneria. El pago del cliente descuenta su SALDO
- * GENERAL (no una Orden de Servicio especifica) -- por eso el saldo
+ * Cliente de la mecanica/torneria. El SALDO GENERAL del cliente (no vinculado
+ * a una Orden de Servicio especifica) sube cuando se cierra una OS (se suma
+ * el valorTotal, ver OrdenDeServicioController.cerrar) y baja cuando el
+ * cliente paga (ClienteController.registrarPagamento) -- por eso el saldo
  * esta aca en Cliente, y no en OrdenDeServicio.
  */
 @Entity
@@ -33,7 +35,8 @@ public class Cliente {
 
     /**
      * Saldo general del cliente: positivo = el cliente debe a la mecanica.
-     * Se descuenta directamente con los pagos, sin vincular a una OS.
+     * Sube al cerrar una OS (se suma el valorTotal) y baja con los pagos --
+     * en ningun caso queda vinculado a una OS especifica.
      */
     @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal saldo = BigDecimal.ZERO;

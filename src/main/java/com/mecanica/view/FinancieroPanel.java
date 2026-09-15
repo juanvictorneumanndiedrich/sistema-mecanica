@@ -31,7 +31,7 @@ import java.util.List;
  * SwingWorker para no trabar la interfaz, siguiendo el mismo patron ya
  * usado en ClientesMaquinariosPanel.
  */
-public class FinancieroPanel extends JPanel {
+public class FinancieroPanel extends JPanel implements PanelActualizable {
 
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DecimalFormat FORMATO_SALDO = new DecimalFormat("#,##0");
@@ -66,6 +66,12 @@ public class FinancieroPanel extends JPanel {
         add(armarCentro(), BorderLayout.CENTER);
         add(armarPie(), BorderLayout.SOUTH);
 
+        buscarMovimientos();
+    }
+
+    /** Vuelve a buscar los movimientos con el mismo periodo/categoria filtrados al entrar en esta area. */
+    @Override
+    public void actualizar() {
         buscarMovimientos();
     }
 

@@ -23,7 +23,7 @@ import java.util.List;
  * SwingWorker para no trabar la interfaz, siguiendo el mismo patron ya
  * usado en LoginView.
  */
-public class ClientesMaquinariosPanel extends JPanel {
+public class ClientesMaquinariosPanel extends JPanel implements PanelActualizable {
 
     private final ClienteController clienteController = new ClienteController();
     private final MaquinarioController maquinarioController = new MaquinarioController();
@@ -62,6 +62,13 @@ public class ClientesMaquinariosPanel extends JPanel {
         botonPagoCliente.setEnabled(false);
         actualizarEstadoBotonesMaquinario();
 
+        cargarClientes(null);
+    }
+
+    /** Recarga la lista de clientes (sin filtro de busqueda) al entrar en esta area. */
+    @Override
+    public void actualizar() {
+        campoBusqueda.setText("");
         cargarClientes(null);
     }
 

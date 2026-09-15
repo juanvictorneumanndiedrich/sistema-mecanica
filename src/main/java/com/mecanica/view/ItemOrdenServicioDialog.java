@@ -277,6 +277,9 @@ public class ItemOrdenServicioDialog extends JDialog {
     }
 
     private String formatoMaquinario(Maquinario maquinario) {
+        if (maquinario == null) {
+            return "Servicio general (sin maquinaria)";
+        }
         StringBuilder texto = new StringBuilder(maquinario.getTipo().toString());
         if (maquinario.getIdentificacion() != null && !maquinario.getIdentificacion().isBlank()) {
             texto.append(" - ").append(maquinario.getIdentificacion());

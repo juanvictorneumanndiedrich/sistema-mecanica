@@ -88,7 +88,7 @@ public class OrdenServicioFormDialog extends JDialog {
         gbc.insets = new Insets(4, 0, 0, 0);
         formulario.add(comboCliente, gbc);
 
-        fila = agregarEtiqueta(formulario, gbc, fila, "MAQUINARIO *");
+        fila = agregarEtiqueta(formulario, gbc, fila, "MAQUINARIO");
         comboMaquinario.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         comboMaquinario.setRenderer(new DefaultListCellRenderer() {
             @Override
@@ -97,6 +97,8 @@ public class OrdenServicioFormDialog extends JDialog {
                 super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
                 if (value instanceof Maquinario eq) {
                     setText(formatoMaquinario(eq));
+                } else {
+                    setText("Servicio general (sin maquinaria)");
                 }
                 return this;
             }
@@ -242,11 +244,17 @@ public class OrdenServicioFormDialog extends JDialog {
                 } catch (Exception e) {
                     error = e;
                 }
-                comboMaquinario.setModel(new DefaultComboBoxModel<>(new Vector<>(maquinarios)));
+                // El primer item queda null a proposito -- representa "Servicio
+                // general (sin maquinaria)", ver el renderer del combo. Siempre
+                // esta disponible, tenga o no maquinarios el cliente.
+                Vector<Maquinario> opciones = new Vector<>();
+                opciones.add(null);
+                opciones.addAll(maquinarios);
+                comboMaquinario.setModel(new DefaultComboBoxModel<>(opciones));
                 if (error != null) {
                     labelError.setText("No fue posible cargar los maquinarios del cliente.");
                 } else if (maquinarios.isEmpty()) {
-                    labelError.setText("Este cliente no tiene maquinarios registrados.");
+                    labelError.setText("Este cliente no tiene maquinarios registrados; puede abrir la OS como servicio general.");
                 } else {
                     labelError.setText(" ");
                 }
@@ -271,10 +279,6 @@ public class OrdenServicioFormDialog extends JDialog {
 
         if (cliente == null) {
             labelError.setText("Seleccione un cliente.");
-            return;
-        }
-        if (maquinario == null) {
-            labelError.setText("Seleccione un maquinario del cliente.");
             return;
         }
         if (problema.isEmpty()) {
