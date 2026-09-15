@@ -1,39 +1,37 @@
 package com.mecanica.view;
 
-import com.mecanica.enums.FormaPagoCompra;
+import com.mecanica.controller.CompraController;
+import com.mecanica.model.Compra;
 import com.mecanica.model.Proveedor;
 
 import javax.swing.*;
 import java.awt.*;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
 /**
- * Dialogo modal para registrar una Compra nueva, siempre vinculada al
- * Proveedor que esta seleccionado en ComprasProveedoresPanel (el proveedor
- * no se elige aca, solo se muestra como referencia). Solo da alta -- no
- * existe edicion de una compra ya registrada. La forma de pago tiene
- * exactamente los 2 escenarios de FormaPagoCompra (ver
- * CompraController.registrarCompra): PAGO_INMEDIATO o
- * CARGADA_EN_CUENTA_PROVEEDOR.
+ * Dialogo modal para abrir una Compra nueva ("notinha") a un Proveedor --
+ * mismo patron de OrdenServicioFormDialog: solo pide la fecha, siempre
+ * vinculada al Proveedor que esta seleccionado en ComprasProveedoresPanel.
+ * El numero de la nota NO se escribe a mano: lo genera el Controller,
+ * secuencial y sin repetir (ver CompraController.abrir).
+ *
+ * Al confirmar ya persiste la Compra (ABIERTA), porque los items que se
+ * agregan despues (ver ItemCompraDialog) necesitan una Compra ya guardada
+ * para vincularse.
  */
 public class CompraFormDialog extends JDialog {
 
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
+    private final CompraController compraController = new CompraController();
+
     private final JTextField campoFecha = new JTextField();
-    private final JTextField campoDescripcion = new JTextField();
-    private final JTextField campoValor = new JTextField();
-    private final JComboBox<FormaPagoCompra> comboFormaPago = new JComboBox<>(FormaPagoCompra.values());
     private final JLabel labelError = new JLabel(" ");
 
     private final Proveedor proveedor;
-    private LocalDate fecha;
-    private String descripcion;
-    private BigDecimal valor;
-    private FormaPagoCompra formaPago;
+    private Compra compraCreada;
     private boolean confirmado;
 
     public CompraFormDialog(Window propietario, Proveedor proveedor) {
@@ -42,29 +40,18 @@ public class CompraFormDialog extends JDialog {
         armarPantalla();
     }
 
-    /** true si el usuario confirmo con REGISTRAR (y no cerro/cancelo). */
+    /** true si el usuario confirmo con ABRIR COMPRA (y la compra ya quedo persistida). */
     public boolean isConfirmado() {
         return confirmado;
     }
 
-    public LocalDate getFecha() {
-        return fecha;
-    }
-
-    public String getDescripcion() {
-        return descripcion;
-    }
-
-    public BigDecimal getValor() {
-        return valor;
-    }
-
-    public FormaPagoCompra getFormaPago() {
-        return formaPago;
+    /** Compra recien creada, ya ABIERTA y con numero. Valida solo si isConfirmado(). */
+    public Compra getCompraCreada() {
+        return compraCreada;
     }
 
     private void armarPantalla() {
-        setSize(420, 460);
+        setSize(420, 300);
         setResizable(false);
         setLayout(new BorderLayout());
 
@@ -85,16 +72,15 @@ public class CompraFormDialog extends JDialog {
         gbc.insets = new Insets(0, 0, 0, 0);
         formulario.add(labelProveedor, gbc);
 
-        campoFecha.setText(LocalDate.now().format(FORMATO_FECHA));
-        int fila = agregarCampo(formulario, gbc, 1, "FECHA (dd/mm/aaaa) *", campoFecha);
-        fila = agregarCampo(formulario, gbc, fila, "DESCRIPCION", campoDescripcion);
-        fila = agregarCampo(formulario, gbc, fila, "VALOR (Gs.) *", campoValor);
+        JLabel labelAviso = new JLabel("El N° de la nota se genera automaticamente.");
+        labelAviso.setForeground(Paleta.GRIS_TEXTO);
+        labelAviso.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        gbc.gridy = 1;
+        gbc.insets = new Insets(6, 0, 0, 0);
+        formulario.add(labelAviso, gbc);
 
-        comboFormaPago.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        fila = agregarEtiqueta(formulario, gbc, fila, "FORMA DE PAGO *");
-        gbc.gridy = fila++;
-        gbc.insets = new Insets(4, 0, 0, 0);
-        formulario.add(comboFormaPago, gbc);
+        campoFecha.setText(LocalDate.now().format(FORMATO_FECHA));
+        int fila = agregarCampo(formulario, gbc, 2, "FECHA (dd/mm/aaaa) *", campoFecha);
 
         labelError.setForeground(Paleta.ROJO_ERROR);
         labelError.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -106,7 +92,7 @@ public class CompraFormDialog extends JDialog {
         botones.setOpaque(false);
         BotonPlano botonCancelar = new BotonPlano("CANCELAR", Paleta.GRIS_DESHABILITADO, Paleta.GRIS_TEXTO);
         botonCancelar.addActionListener(e -> dispose());
-        BotonPlano botonGuardar = new BotonPlano("REGISTRAR");
+        BotonPlano botonGuardar = new BotonPlano("ABRIR COMPRA");
         botonGuardar.addActionListener(e -> onGuardar());
         botones.add(botonCancelar);
         botones.add(botonGuardar);
@@ -153,38 +139,42 @@ public class CompraFormDialog extends JDialog {
             labelError.setText("Ingrese una fecha valida (dd/mm/aaaa).");
             return;
         }
+        labelError.setText(" ");
 
-        // Acepta tanto "150000" como "150.000" (separador de miles paraguayo).
-        String textoValor = campoValor.getText().trim().replace(".", "").replace(",", ".");
-        BigDecimal valorIngresado;
-        try {
-            valorIngresado = new BigDecimal(textoValor);
-            if (valorIngresado.compareTo(BigDecimal.ZERO) <= 0) {
-                labelError.setText("El valor debe ser mayor que cero.");
-                return;
+        setHabilitado(false);
+        new SwingWorker<Compra, Void>() {
+            RuntimeException error;
+
+            @Override
+            protected Compra doInBackground() {
+                try {
+                    return compraController.abrir(proveedor, fechaIngresada);
+                } catch (RuntimeException e) {
+                    error = e;
+                    return null;
+                }
             }
-        } catch (NumberFormatException e) {
-            labelError.setText("Ingrese un valor numerico valido.");
-            return;
-        }
 
-        FormaPagoCompra formaSeleccionada = (FormaPagoCompra) comboFormaPago.getSelectedItem();
-        if (formaSeleccionada == null) {
-            labelError.setText("La forma de pago es obligatoria.");
-            return;
-        }
-
-        fecha = fechaIngresada;
-        valor = valorIngresado;
-        formaPago = formaSeleccionada;
-        descripcion = vacioComoNull(campoDescripcion.getText());
-
-        confirmado = true;
-        dispose();
+            @Override
+            protected void done() {
+                setHabilitado(true);
+                if (error != null) {
+                    labelError.setText(error.getMessage());
+                    return;
+                }
+                try {
+                    compraCreada = get();
+                } catch (Exception e) {
+                    labelError.setText("No fue posible abrir la compra.");
+                    return;
+                }
+                confirmado = true;
+                dispose();
+            }
+        }.execute();
     }
 
-    private String vacioComoNull(String texto) {
-        String valorTexto = texto == null ? "" : texto.trim();
-        return valorTexto.isEmpty() ? null : valorTexto;
+    private void setHabilitado(boolean habilitado) {
+        setCursor(habilitado ? Cursor.getDefaultCursor() : Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
     }
 }

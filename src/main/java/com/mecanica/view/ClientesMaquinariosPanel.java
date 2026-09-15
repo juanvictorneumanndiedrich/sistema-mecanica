@@ -7,6 +7,7 @@ import com.mecanica.model.Maquinario;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
@@ -112,6 +113,7 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
         centro.add(panelBusqueda, BorderLayout.NORTH);
 
         estilizarTabla(tablaClientes);
+        tablaClientes.getColumnModel().getColumn(3).setCellRenderer(new ColorSaldoRenderer(modeloClientes));
         tablaClientes.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 onSeleccionarCliente();
@@ -511,6 +513,36 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
                 cargarMaquinarios(cliente);
             }
         }.execute();
+    }
+
+    // ---------------------------------------------------------------- Colores de tabla
+
+    /**
+     * Pinta la columna "Saldo (Gs.)": rojo cuando el cliente debe (saldo
+     * positivo) y verde cuando tiene credito a favor (saldo negativo). Un
+     * saldo en cero se deja con el color normal de la tabla.
+     */
+    private static class ColorSaldoRenderer extends DefaultTableCellRenderer {
+        private final TablaClientesModel modelo;
+
+        ColorSaldoRenderer(TablaClientesModel modelo) {
+            this.modelo = modelo;
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable tabla, Object valor, boolean seleccionado,
+                boolean conFoco, int fila, int columna) {
+            Component componente = super.getTableCellRendererComponent(tabla, valor, seleccionado, conFoco, fila, columna);
+            Cliente cliente = modelo.getCliente(tabla.convertRowIndexToModel(fila));
+            BigDecimal saldo = cliente.getSaldo() == null ? BigDecimal.ZERO : cliente.getSaldo();
+            int comparacion = saldo.compareTo(BigDecimal.ZERO);
+            if (comparacion > 0) {
+                componente.setForeground(Paleta.ROJO_ERROR);
+            } else if (comparacion < 0) {
+                componente.setForeground(Paleta.VERDE_EXITO);
+            }
+            return componente;
+        }
     }
 
     // ---------------------------------------------------------------- Modelos de tabla

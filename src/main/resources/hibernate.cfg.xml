@@ -27,7 +27,7 @@
 		<mapping class="com.mecanica.model.OrdenDeServicio"/>
 		<mapping class="com.mecanica.model.ItemOrdenServicio"/>
 		<mapping class="com.mecanica.model.Compra"/>
-		<mapping class="com.mecanica.model.CierreProveedor"/>
+		<mapping class="com.mecanica.model.ItemCompra"/>
 		<mapping class="com.mecanica.model.RetiroEmpleado"/>
 		<mapping class="com.mecanica.model.RetiroSocio"/>
 		<mapping class="com.mecanica.model.MovimientoFinanciero"/>

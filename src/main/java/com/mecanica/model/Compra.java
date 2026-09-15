@@ -1,14 +1,26 @@
 package com.mecanica.model;
 
-import com.mecanica.enums.FormaPagoCompra;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Compra hecha a un proveedor. El formulario de compra tiene solo los
- * 2 escenarios previstos en FormaPagoCompra -- el escenario de "cuenta del
- * propio cliente en el proveedor" no existe aca, por decision de negocio.
+ * Compra hecha a un proveedor. Funciona como una "notinha": se abre una
+ * Compra por cada visita/pedido al proveedor (CompraController.abrir) y se
+ * le van agregando los items (cada cosa comprada, con cantidad y precio --
+ * ver ItemCompra), en vez de registrar una Compra por cada producto.
+ *
+ * La nota nunca se "cierra": se puede seguir editando siempre. Su valor
+ * entra en la cuenta del proveedor a medida que se cargan los items -- cada
+ * item agregado/quitado ajusta el saldo del proveedor en la misma
+ * transaccion (ver ItemCompraController), y borrar la nota entera descuenta
+ * su valor de esa cuenta (CompraController.eliminar).
+ *
+ * No hay campo de estado: PENDIENTE/PAGADA se calcula en pantalla a partir
+ * de lo que ya se le pago al proveedor, porque el pago no es por nota
+ * especifica (ver ProveedorController.registrarPagamento).
  */
 @Entity
 @Table(name = "compra")
@@ -18,6 +30,14 @@ public class Compra {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * Numero secuencial de la notinha, generado automaticamente por el
+     * Controller (ver CompraController.abrir). No se edita a mano y no se
+     * repite -- sirve para identificar la nota de compra.
+     */
+    @Column(nullable = false, unique = true)
+    private Long numero;
+
     @ManyToOne(optional = false)
     @JoinColumn(name = "proveedor_id", nullable = false)
     private Proveedor proveedor;
@@ -25,23 +45,11 @@ public class Compra {
     @Column(nullable = false)
     private LocalDate fecha;
 
-    @Column(length = 200)
-    private String descripcion;
+    @Column(name = "valor_total", nullable = false, precision = 14, scale = 2)
+    private BigDecimal valorTotal = BigDecimal.ZERO;
 
-    @Column(nullable = false, precision = 14, scale = 2)
-    private BigDecimal valor;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "forma_pago", nullable = false, length = 30)
-    private FormaPagoCompra formaPago;
-
-    /**
-     * Se completa cuando la compra es del tipo CARGADA_EN_CUENTA_PROVEEDOR y
-     * ya fue incluida en un cierre. Queda nulo mientras esta pendiente.
-     */
-    @ManyToOne
-    @JoinColumn(name = "cierre_proveedor_id")
-    private CierreProveedor cierreProveedor;
+    @OneToMany(mappedBy = "compra", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ItemCompra> items = new ArrayList<>();
 
     public Compra() {
     }
@@ -52,6 +60,14 @@ public class Compra {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getNumero() {
+        return numero;
+    }
+
+    public void setNumero(Long numero) {
+        this.numero = numero;
     }
 
     public Proveedor getProveedor() {
@@ -70,35 +86,19 @@ public class Compra {
         this.fecha = fecha;
     }
 
-    public String getDescripcion() {
-        return descripcion;
+    public BigDecimal getValorTotal() {
+        return valorTotal;
     }
 
-    public void setDescripcion(String descripcion) {
-        this.descripcion = descripcion;
+    public void setValorTotal(BigDecimal valorTotal) {
+        this.valorTotal = valorTotal;
     }
 
-    public BigDecimal getValor() {
-        return valor;
+    public List<ItemCompra> getItems() {
+        return items;
     }
 
-    public void setValor(BigDecimal valor) {
-        this.valor = valor;
-    }
-
-    public FormaPagoCompra getFormaPago() {
-        return formaPago;
-    }
-
-    public void setFormaPago(FormaPagoCompra formaPago) {
-        this.formaPago = formaPago;
-    }
-
-    public CierreProveedor getCierreProveedor() {
-        return cierreProveedor;
-    }
-
-    public void setCierreProveedor(CierreProveedor cierreProveedor) {
-        this.cierreProveedor = cierreProveedor;
+    public void setItems(List<ItemCompra> items) {
+        this.items = items;
     }
 }

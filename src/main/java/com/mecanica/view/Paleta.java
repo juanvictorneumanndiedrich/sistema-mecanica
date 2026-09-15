@@ -25,6 +25,9 @@ public final class Paleta {
     /** Fuera de la paleta: se usa solo para mensajes de error. */
     public static final Color ROJO_ERROR = new Color(192, 57, 43);
 
+    /** Fuera de la paleta: se usa solo para valores positivos (entradas, saldo a favor). */
+    public static final Color VERDE_EXITO = new Color(39, 138, 91);
+
     private Paleta() {
         // clase utilitaria: no debe ser instanciada
     }

@@ -1,30 +1,39 @@
 package com.mecanica.view;
 
-import com.mecanica.controller.CierreProveedorController;
 import com.mecanica.controller.CompraController;
 import com.mecanica.controller.ProveedorController;
-import com.mecanica.enums.EstadoCierreProveedor;
-import com.mecanica.enums.FormaPagoCompra;
-import com.mecanica.model.CierreProveedor;
+import com.mecanica.enums.EstadoCompra;
 import com.mecanica.model.Compra;
 import com.mecanica.model.Proveedor;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Pantalla real del area "Compras y Proveedores": lista de proveedores a la
- * izquierda (con busqueda por nombre, Nuevo/Editar/Eliminar) y, a la
- * derecha, dos pestanas para el proveedor seleccionado -- "Compras"
- * (registro de compras nuevas, con su forma de pago y estado) y "Cierres"
- * (el cierre de cuenta del proveedor, en sus 2 etapas manuales: abrir el
- * cierre juntando las compras pendientes, y despues marcarlo como pagado --
- * ver CierreProveedorController).
+ * izquierda (con busqueda por nombre, Nuevo/Editar/Eliminar y el saldo que
+ * la mecanica le debe) y, a la derecha, las Compras ("notinhas") del
+ * proveedor seleccionado.
+ *
+ * Cada Compra funciona como una nota: se abre con NUEVA COMPRA (numero
+ * secuencial automatico) y se le van agregando items -- cada cosa comprada,
+ * con cantidad y precio -- en el dialogo de detalle (ver ItemCompraDialog).
+ * El valor de la nota entra en la cuenta del proveedor a medida que se
+ * cargan los items, y borrar una nota descuenta su valor de esa cuenta.
+ *
+ * El pago NO es por notinha: REGISTRAR PAGO descuenta un valor del saldo
+ * general del proveedor y genera el gasto en Financiero (ver
+ * ProveedorController.registrarPagamento) -- igual al pago del cliente en
+ * ClientesMaquinariosPanel. La columna Estado se calcula: lo que ya se pago
+ * va cubriendo las notas de la mas vieja a la mas nueva, y una nota ya
+ * PAGADA queda bloqueada (no se edita ni se borra).
  *
  * Las llamadas al Controller (que abren Session de Hibernate) corren en
  * SwingWorker para no trabar la interfaz, siguiendo el mismo patron ya
@@ -34,24 +43,23 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
 
     private final ProveedorController proveedorController = new ProveedorController();
     private final CompraController compraController = new CompraController();
-    private final CierreProveedorController cierreProveedorController = new CierreProveedorController();
 
     private final TablaProveedoresModel modeloProveedores = new TablaProveedoresModel();
     private final TablaComprasModel modeloCompras = new TablaComprasModel();
-    private final TablaCierresModel modeloCierres = new TablaCierresModel();
 
     private final JTable tablaProveedores = new JTable(modeloProveedores);
     private final JTable tablaCompras = new JTable(modeloCompras);
-    private final JTable tablaCierres = new JTable(modeloCierres);
 
     private final JTextField campoBusqueda = new JTextField();
     private final JLabel labelDetalleTitulo = new JLabel("Proveedor");
+    private final JLabel labelSaldoProveedor = new JLabel(" ");
 
     private final BotonPlano botonEditarProveedor = new BotonPlano("EDITAR", Paleta.AZUL, Paleta.AZUL_CLARO);
     private final BotonPlano botonEliminarProveedor = new BotonPlano("ELIMINAR", Paleta.ROJO_ERROR, Paleta.ROJO_ERROR.brighter());
+    private final BotonPlano botonPagoProveedor = new BotonPlano("REGISTRAR PAGO", Paleta.AZUL, Paleta.AZUL_CLARO);
     private final BotonPlano botonNuevaCompra = new BotonPlano("NUEVA COMPRA", Paleta.AZUL, Paleta.AZUL_CLARO);
-    private final BotonPlano botonAbrirCierre = new BotonPlano("ABRIR CIERRE", Paleta.AZUL, Paleta.AZUL_CLARO);
-    private final BotonPlano botonMarcarPagado = new BotonPlano("MARCAR COMO PAGADO", Paleta.AZUL, Paleta.AZUL_CLARO);
+    private final BotonPlano botonVerEditarCompra = new BotonPlano("VER / EDITAR ITEMS", Paleta.AZUL, Paleta.AZUL_CLARO);
+    private final BotonPlano botonEliminarCompra = new BotonPlano("ELIMINAR NOTA", Paleta.ROJO_ERROR, Paleta.ROJO_ERROR.brighter());
 
     public ComprasProveedoresPanel() {
         super(new BorderLayout());
@@ -60,7 +68,7 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
                 armarPanelProveedores(), armarPanelDetalle());
-        splitPane.setResizeWeight(0.4);
+        splitPane.setResizeWeight(0.45);
         splitPane.setBorder(null);
         splitPane.setDividerSize(10);
         splitPane.setOpaque(false);
@@ -68,8 +76,9 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
 
         botonEditarProveedor.setEnabled(false);
         botonEliminarProveedor.setEnabled(false);
+        botonPagoProveedor.setEnabled(false);
         actualizarEstadoBotonesDetalle();
-        actualizarEstadoBotonMarcarPagado();
+        actualizarEstadoBotonesCompra();
 
         cargarProveedores(null);
     }
@@ -121,6 +130,7 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
         centro.add(panelBusqueda, BorderLayout.NORTH);
 
         estilizarTabla(tablaProveedores);
+        tablaProveedores.getColumnModel().getColumn(3).setCellRenderer(new ColorSaldoRenderer(modeloProveedores));
         tablaProveedores.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 onSeleccionarProveedor();
@@ -133,28 +143,34 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
         botones.setOpaque(false);
         botonEditarProveedor.addActionListener(e -> onEditarProveedor());
         botonEliminarProveedor.addActionListener(e -> onEliminarProveedor());
+        botonPagoProveedor.addActionListener(e -> onRegistrarPago());
         botones.add(botonEditarProveedor);
         botones.add(botonEliminarProveedor);
+        botones.add(botonPagoProveedor);
         panel.add(botones, BorderLayout.SOUTH);
 
         return panel;
     }
 
-    // ---------------------------------------------------------------- Detalle (Compras / Cierres)
+    // ---------------------------------------------------------------- Detalle (Compras)
 
     private JComponent armarPanelDetalle() {
         JPanel panel = new JPanel(new BorderLayout(0, 10));
         panel.setOpaque(false);
 
+        JPanel encabezado = new JPanel(new BorderLayout(8, 0));
+        encabezado.setOpaque(false);
+
         labelDetalleTitulo.setFont(new Font("Segoe UI", Font.BOLD, 17));
         labelDetalleTitulo.setForeground(Paleta.AZUL_OSCURO);
-        panel.add(labelDetalleTitulo, BorderLayout.NORTH);
+        encabezado.add(labelDetalleTitulo, BorderLayout.WEST);
 
-        JTabbedPane pestanas = new JTabbedPane();
-        pestanas.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        pestanas.addTab("Compras", armarPanelCompras());
-        pestanas.addTab("Cierres", armarPanelCierres());
-        panel.add(pestanas, BorderLayout.CENTER);
+        labelSaldoProveedor.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        labelSaldoProveedor.setForeground(Paleta.GRIS_TEXTO);
+        encabezado.add(labelSaldoProveedor, BorderLayout.EAST);
+
+        panel.add(encabezado, BorderLayout.NORTH);
+        panel.add(armarPanelCompras(), BorderLayout.CENTER);
 
         return panel;
     }
@@ -170,38 +186,22 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
         panel.add(encabezado, BorderLayout.NORTH);
 
         estilizarTabla(tablaCompras);
-        panel.add(new JScrollPane(tablaCompras), BorderLayout.CENTER);
-
-        botonNuevaCompra.addActionListener(e -> onNuevaCompra());
-
-        return panel;
-    }
-
-    private JComponent armarPanelCierres() {
-        JPanel panel = new JPanel(new BorderLayout(0, 8));
-        panel.setOpaque(false);
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
-
-        JPanel encabezado = new JPanel(new BorderLayout());
-        encabezado.setOpaque(false);
-        encabezado.add(botonAbrirCierre, BorderLayout.EAST);
-        panel.add(encabezado, BorderLayout.NORTH);
-
-        estilizarTabla(tablaCierres);
-        tablaCierres.getSelectionModel().addListSelectionListener(e -> {
+        tablaCompras.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
-                actualizarEstadoBotonMarcarPagado();
+                actualizarEstadoBotonesCompra();
             }
         });
-        panel.add(new JScrollPane(tablaCierres), BorderLayout.CENTER);
+        panel.add(new JScrollPane(tablaCompras), BorderLayout.CENTER);
 
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         botones.setOpaque(false);
-        botones.add(botonMarcarPagado);
+        botones.add(botonVerEditarCompra);
+        botones.add(botonEliminarCompra);
         panel.add(botones, BorderLayout.SOUTH);
 
-        botonAbrirCierre.addActionListener(e -> onAbrirCierre());
-        botonMarcarPagado.addActionListener(e -> onMarcarComoPagado());
+        botonNuevaCompra.addActionListener(e -> onNuevaCompra());
+        botonVerEditarCompra.addActionListener(e -> onVerEditarCompra());
+        botonEliminarCompra.addActionListener(e -> onEliminarCompra());
 
         return panel;
     }
@@ -220,7 +220,15 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
 
     // ---------------------------------------------------------------- Carga de datos
 
+    /**
+     * Recarga los proveedores y vuelve a marcar el que estaba seleccionado
+     * -- importante porque casi toda accion de compra cambia el saldo del
+     * proveedor, y seria molesto perder la seleccion en cada cambio.
+     */
     private void cargarProveedores(String filtroNombre) {
+        Proveedor antes = proveedorSeleccionado();
+        Long idAntes = antes == null ? null : antes.getId();
+
         setHabilitado(false);
         new SwingWorker<List<Proveedor>, Void>() {
             Exception error;
@@ -248,14 +256,28 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
                 if (error != null) {
                     mostrarErrorConexion();
                 }
+                seleccionarProveedorPorId(idAntes);
                 onSeleccionarProveedor();
             }
         }.execute();
     }
 
+    private void seleccionarProveedorPorId(Long id) {
+        if (id == null) {
+            return;
+        }
+        for (int fila = 0; fila < modeloProveedores.getRowCount(); fila++) {
+            if (id.equals(modeloProveedores.getProveedor(fila).getId())) {
+                tablaProveedores.setRowSelectionInterval(fila, fila);
+                return;
+            }
+        }
+    }
+
     private void cargarCompras(Proveedor proveedor) {
         if (proveedor == null) {
-            modeloCompras.setDatos(List.of());
+            modeloCompras.setDatos(List.of(), BigDecimal.ZERO);
+            actualizarEstadoBotonesCompra();
             return;
         }
 
@@ -277,50 +299,14 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
             protected void done() {
                 setHabilitado(true);
                 try {
-                    modeloCompras.setDatos(get());
+                    modeloCompras.setDatos(get(), proveedor.getSaldo());
                 } catch (Exception e) {
                     error = e;
                 }
                 if (error != null) {
                     mostrarErrorConexion();
                 }
-            }
-        }.execute();
-    }
-
-    private void cargarCierres(Proveedor proveedor) {
-        if (proveedor == null) {
-            modeloCierres.setDatos(List.of());
-            actualizarEstadoBotonMarcarPagado();
-            return;
-        }
-
-        setHabilitado(false);
-        new SwingWorker<List<CierreProveedor>, Void>() {
-            Exception error;
-
-            @Override
-            protected List<CierreProveedor> doInBackground() {
-                try {
-                    return cierreProveedorController.listarPorProveedor(proveedor);
-                } catch (Exception e) {
-                    error = e;
-                    return List.of();
-                }
-            }
-
-            @Override
-            protected void done() {
-                setHabilitado(true);
-                try {
-                    modeloCierres.setDatos(get());
-                } catch (Exception e) {
-                    error = e;
-                }
-                if (error != null) {
-                    mostrarErrorConexion();
-                }
-                actualizarEstadoBotonMarcarPagado();
+                actualizarEstadoBotonesCompra();
             }
         }.execute();
     }
@@ -330,10 +316,29 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
         boolean hay = seleccionado != null;
         botonEditarProveedor.setEnabled(hay);
         botonEliminarProveedor.setEnabled(hay);
+        botonPagoProveedor.setEnabled(hay);
         labelDetalleTitulo.setText(hay ? seleccionado.getNombre() : "Proveedor");
+        actualizarSaldoMostrado(seleccionado);
         actualizarEstadoBotonesDetalle();
         cargarCompras(seleccionado);
-        cargarCierres(seleccionado);
+    }
+
+    /** Muestra el saldo del proveedor al lado del titulo: rojo si la mecanica le debe. */
+    private void actualizarSaldoMostrado(Proveedor proveedor) {
+        if (proveedor == null) {
+            labelSaldoProveedor.setText(" ");
+            return;
+        }
+        BigDecimal saldo = proveedor.getSaldo() == null ? BigDecimal.ZERO : proveedor.getSaldo();
+        labelSaldoProveedor.setText("SALDO: Gs. " + new DecimalFormat("#,##0").format(saldo));
+        int comparacion = saldo.compareTo(BigDecimal.ZERO);
+        if (comparacion > 0) {
+            labelSaldoProveedor.setForeground(Paleta.ROJO_ERROR);
+        } else if (comparacion < 0) {
+            labelSaldoProveedor.setForeground(Paleta.VERDE_EXITO);
+        } else {
+            labelSaldoProveedor.setForeground(Paleta.GRIS_TEXTO);
+        }
     }
 
     private Proveedor proveedorSeleccionado() {
@@ -341,20 +346,26 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
         return fila < 0 ? null : modeloProveedores.getProveedor(fila);
     }
 
-    private CierreProveedor cierreSeleccionado() {
-        int fila = tablaCierres.getSelectedRow();
-        return fila < 0 ? null : modeloCierres.getCierre(fila);
+    private Compra compraSeleccionada() {
+        int fila = tablaCompras.getSelectedRow();
+        return fila < 0 ? null : modeloCompras.getCompra(fila);
+    }
+
+    /** true cuando la nota seleccionada todavia se puede editar/borrar (no esta pagada). */
+    private boolean compraSeleccionadaEditable() {
+        Compra compra = compraSeleccionada();
+        return compra != null && !modeloCompras.estaPagada(compra);
     }
 
     private void actualizarEstadoBotonesDetalle() {
         boolean hayProveedor = proveedorSeleccionado() != null;
         botonNuevaCompra.setEnabled(hayProveedor);
-        botonAbrirCierre.setEnabled(hayProveedor);
     }
 
-    private void actualizarEstadoBotonMarcarPagado() {
-        CierreProveedor cierre = cierreSeleccionado();
-        botonMarcarPagado.setEnabled(cierre != null && cierre.getEstado() == EstadoCierreProveedor.CERRADO);
+    private void actualizarEstadoBotonesCompra() {
+        boolean hay = compraSeleccionada() != null;
+        botonVerEditarCompra.setEnabled(hay);
+        botonEliminarCompra.setEnabled(compraSeleccionadaEditable());
     }
 
     private void setHabilitado(boolean habilitado) {
@@ -461,6 +472,46 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
         }.execute();
     }
 
+    /** Pago al proveedor: descuenta del saldo general, no de una notinha especifica. */
+    private void onRegistrarPago() {
+        Proveedor seleccionado = proveedorSeleccionado();
+        if (seleccionado == null) {
+            return;
+        }
+        PagoProveedorDialog dialogo = new PagoProveedorDialog(ventana(),
+                seleccionado.getNombre(), seleccionado.getSaldo());
+        dialogo.setVisible(true);
+        if (!dialogo.isConfirmado()) {
+            return;
+        }
+
+        setHabilitado(false);
+        new SwingWorker<Void, Void>() {
+            RuntimeException error;
+
+            @Override
+            protected Void doInBackground() {
+                try {
+                    proveedorController.registrarPagamento(seleccionado, dialogo.getValor(), dialogo.getDescripcion());
+                } catch (RuntimeException e) {
+                    error = e;
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                setHabilitado(true);
+                if (error != null) {
+                    JOptionPane.showMessageDialog(ComprasProveedoresPanel.this,
+                            error.getMessage(), "No fue posible registrar el pago", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                cargarProveedores(campoBusqueda.getText().trim());
+            }
+        }.execute();
+    }
+
     // ---------------------------------------------------------------- Compra
 
     private void onNuevaCompra() {
@@ -473,6 +524,39 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
         if (!dialogo.isConfirmado()) {
             return;
         }
+        Compra creada = dialogo.getCompraCreada();
+        if (creada != null) {
+            // Recien abierta la nota, se abre de una el detalle para cargar los items.
+            new ItemCompraDialog(ventana(), creada, true).setVisible(true);
+        }
+        // Recarga tambien los proveedores, porque cargar items cambio el saldo.
+        cargarProveedores(campoBusqueda.getText().trim());
+    }
+
+    private void onVerEditarCompra() {
+        Compra seleccionada = compraSeleccionada();
+        if (seleccionada == null) {
+            return;
+        }
+        boolean editable = !modeloCompras.estaPagada(seleccionada);
+        new ItemCompraDialog(ventana(), seleccionada, editable).setVisible(true);
+        cargarProveedores(campoBusqueda.getText().trim());
+    }
+
+    /** Borrar la nota descuenta su valor de la cuenta del proveedor (ver CompraController.eliminar). */
+    private void onEliminarCompra() {
+        Compra seleccionada = compraSeleccionada();
+        if (seleccionada == null) {
+            return;
+        }
+        int confirmacion = JOptionPane.showConfirmDialog(this,
+                "Eliminar la nota N° " + seleccionada.getNumero() + " con todos sus items? Su valor (Gs. "
+                        + new DecimalFormat("#,##0").format(seleccionada.getValorTotal())
+                        + ") se va a descontar de la cuenta del proveedor.",
+                "Confirmar eliminacion", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (confirmacion != JOptionPane.YES_OPTION) {
+            return;
+        }
 
         setHabilitado(false);
         new SwingWorker<Void, Void>() {
@@ -481,8 +565,7 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
             @Override
             protected Void doInBackground() {
                 try {
-                    compraController.registrarCompra(proveedor, dialogo.getFecha(), dialogo.getDescripcion(),
-                            dialogo.getValor(), dialogo.getFormaPago());
+                    compraController.eliminar(seleccionada);
                 } catch (RuntimeException e) {
                     error = e;
                 }
@@ -494,140 +577,49 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
                 setHabilitado(true);
                 if (error != null) {
                     JOptionPane.showMessageDialog(ComprasProveedoresPanel.this,
-                            error.getMessage(), "No fue posible registrar la compra", JOptionPane.ERROR_MESSAGE);
+                            error.getMessage(), "No fue posible eliminar la nota", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
-                cargarCompras(proveedor);
+                cargarProveedores(campoBusqueda.getText().trim());
             }
         }.execute();
     }
 
-    // ---------------------------------------------------------------- Cierre de Proveedor
+    // ---------------------------------------------------------------- Colores de tabla
 
-    private void onAbrirCierre() {
-        Proveedor proveedor = proveedorSeleccionado();
-        if (proveedor == null) {
-            return;
+    /**
+     * Pinta la columna "Saldo (Gs.)" de los proveedores: rojo cuando la
+     * mecanica le debe (saldo positivo) y verde cuando quedo pagado de mas
+     * (saldo negativo). Saldo cero queda con el color normal de la tabla.
+     */
+    private static class ColorSaldoRenderer extends DefaultTableCellRenderer {
+        private final TablaProveedoresModel modelo;
+
+        ColorSaldoRenderer(TablaProveedoresModel modelo) {
+            this.modelo = modelo;
         }
 
-        setHabilitado(false);
-        new SwingWorker<List<Compra>, Void>() {
-            Exception error;
-
-            @Override
-            protected List<Compra> doInBackground() {
-                try {
-                    return compraController.listarPendientesDeCierre(proveedor);
-                } catch (Exception e) {
-                    error = e;
-                    return List.of();
-                }
+        @Override
+        public Component getTableCellRendererComponent(JTable tabla, Object valor, boolean seleccionado,
+                boolean conFoco, int fila, int columna) {
+            Component componente = super.getTableCellRendererComponent(tabla, valor, seleccionado, conFoco, fila, columna);
+            Proveedor proveedor = modelo.getProveedor(tabla.convertRowIndexToModel(fila));
+            BigDecimal saldo = proveedor.getSaldo() == null ? BigDecimal.ZERO : proveedor.getSaldo();
+            int comparacion = saldo.compareTo(BigDecimal.ZERO);
+            if (comparacion > 0) {
+                componente.setForeground(Paleta.ROJO_ERROR);
+            } else if (comparacion < 0) {
+                componente.setForeground(Paleta.VERDE_EXITO);
             }
-
-            @Override
-            protected void done() {
-                setHabilitado(true);
-                List<Compra> pendientes = List.of();
-                try {
-                    pendientes = get();
-                } catch (Exception e) {
-                    error = e;
-                }
-                if (error != null) {
-                    mostrarErrorConexion();
-                    return;
-                }
-                if (pendientes.isEmpty()) {
-                    JOptionPane.showMessageDialog(ComprasProveedoresPanel.this,
-                            "No hay compras pendientes para cerrar con este proveedor.",
-                            "Sin compras pendientes", JOptionPane.INFORMATION_MESSAGE);
-                    return;
-                }
-                abrirDialogoDeCierre(proveedor, pendientes);
-            }
-        }.execute();
-    }
-
-    private void abrirDialogoDeCierre(Proveedor proveedor, List<Compra> pendientes) {
-        CierreProveedorDialog dialogo = new CierreProveedorDialog(ventana(), proveedor, pendientes);
-        dialogo.setVisible(true);
-        if (!dialogo.isConfirmado()) {
-            return;
+            return componente;
         }
-
-        setHabilitado(false);
-        new SwingWorker<Void, Void>() {
-            RuntimeException error;
-
-            @Override
-            protected Void doInBackground() {
-                try {
-                    cierreProveedorController.abrirCierre(proveedor, dialogo.getFecha());
-                } catch (RuntimeException e) {
-                    error = e;
-                }
-                return null;
-            }
-
-            @Override
-            protected void done() {
-                setHabilitado(true);
-                if (error != null) {
-                    JOptionPane.showMessageDialog(ComprasProveedoresPanel.this,
-                            error.getMessage(), "No fue posible abrir el cierre", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-                cargarCompras(proveedor);
-                cargarCierres(proveedor);
-            }
-        }.execute();
-    }
-
-    private void onMarcarComoPagado() {
-        Proveedor proveedor = proveedorSeleccionado();
-        CierreProveedor seleccionado = cierreSeleccionado();
-        if (proveedor == null || seleccionado == null) {
-            return;
-        }
-
-        CierreProveedorDialog dialogo = new CierreProveedorDialog(ventana(), seleccionado);
-        dialogo.setVisible(true);
-        if (!dialogo.isConfirmado()) {
-            return;
-        }
-
-        setHabilitado(false);
-        new SwingWorker<Void, Void>() {
-            RuntimeException error;
-
-            @Override
-            protected Void doInBackground() {
-                try {
-                    cierreProveedorController.marcarComoPagado(seleccionado, dialogo.getFecha());
-                } catch (RuntimeException e) {
-                    error = e;
-                }
-                return null;
-            }
-
-            @Override
-            protected void done() {
-                setHabilitado(true);
-                if (error != null) {
-                    JOptionPane.showMessageDialog(ComprasProveedoresPanel.this,
-                            error.getMessage(), "No fue posible marcar como pagado", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-                cargarCierres(proveedor);
-                cargarCompras(proveedor);
-            }
-        }.execute();
     }
 
     // ---------------------------------------------------------------- Modelos de tabla
 
     private static class TablaProveedoresModel extends AbstractTableModel {
-        private static final String[] COLUMNAS = {"Nombre", "Documento", "Telefono", "Contacto"};
+        private static final String[] COLUMNAS = {"Nombre", "Documento", "Telefono", "Saldo (Gs.)"};
+        private static final DecimalFormat FORMATO_SALDO = new DecimalFormat("#,##0");
 
         private List<Proveedor> proveedores = List.of();
 
@@ -666,23 +658,38 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
                 case 2:
                     return proveedor.getTelefono() == null ? "" : proveedor.getTelefono();
                 case 3:
-                    return proveedor.getContacto() == null ? "" : proveedor.getContacto();
+                    return FORMATO_SALDO.format(proveedor.getSaldo() == null ? BigDecimal.ZERO : proveedor.getSaldo());
                 default:
                     return "";
             }
         }
     }
 
+    /**
+     * Notas del proveedor. El Estado no viene de la base: se calcula con
+     * CompraController.calcularPagadas a partir del saldo del proveedor --
+     * lo ya pagado va cubriendo las notas de la mas vieja a la mas nueva.
+     */
     private static class TablaComprasModel extends AbstractTableModel {
-        private static final String[] COLUMNAS = {"Fecha", "Descripcion", "Valor (Gs.)", "Forma de Pago", "Estado"};
+        private static final String[] COLUMNAS = {"N°", "Fecha", "Valor Total (Gs.)", "Estado"};
         private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
 
         private List<Compra> compras = List.of();
+        private Set<Long> pagadas = Set.of();
 
-        void setDatos(List<Compra> compras) {
+        void setDatos(List<Compra> compras, BigDecimal saldoProveedor) {
             this.compras = compras;
+            this.pagadas = CompraController.calcularPagadas(compras, saldoProveedor);
             fireTableDataChanged();
+        }
+
+        Compra getCompra(int fila) {
+            return compras.get(fila);
+        }
+
+        boolean estaPagada(Compra compra) {
+            return pagadas.contains(compra.getId());
         }
 
         @Override
@@ -705,80 +712,13 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
             Compra compra = compras.get(fila);
             switch (columna) {
                 case 0:
+                    return compra.getNumero();
+                case 1:
                     return compra.getFecha() == null ? "" : compra.getFecha().format(FORMATO_FECHA);
-                case 1:
-                    return compra.getDescripcion() == null ? "" : compra.getDescripcion();
                 case 2:
-                    return FORMATO_VALOR.format(compra.getValor() == null ? BigDecimal.ZERO : compra.getValor());
+                    return FORMATO_VALOR.format(compra.getValorTotal() == null ? BigDecimal.ZERO : compra.getValorTotal());
                 case 3:
-                    return compra.getFormaPago();
-                case 4:
-                    return estadoDeCompra(compra);
-                default:
-                    return "";
-            }
-        }
-
-        /**
-         * Estado visible de la compra: no es un campo del modelo, se deriva de
-         * la forma de pago y, si esta cargada en cuenta, del cierre al que
-         * eventualmente fue vinculada (ver Compra.cierreProveedor).
-         */
-        private String estadoDeCompra(Compra compra) {
-            if (compra.getFormaPago() == FormaPagoCompra.PAGO_INMEDIATO) {
-                return "Pagada";
-            }
-            CierreProveedor cierre = compra.getCierreProveedor();
-            if (cierre == null) {
-                return "Pendiente de Cierre";
-            }
-            return cierre.getEstado() == EstadoCierreProveedor.PAGADO ? "Pagada (Cierre)" : "En Cierre";
-        }
-    }
-
-    private static class TablaCierresModel extends AbstractTableModel {
-        private static final String[] COLUMNAS = {"Fecha Cierre", "Fecha Pago", "Valor Total (Gs.)", "Estado"};
-        private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
-
-        private List<CierreProveedor> cierres = List.of();
-
-        void setDatos(List<CierreProveedor> cierres) {
-            this.cierres = cierres;
-            fireTableDataChanged();
-        }
-
-        CierreProveedor getCierre(int fila) {
-            return cierres.get(fila);
-        }
-
-        @Override
-        public int getRowCount() {
-            return cierres.size();
-        }
-
-        @Override
-        public int getColumnCount() {
-            return COLUMNAS.length;
-        }
-
-        @Override
-        public String getColumnName(int columna) {
-            return COLUMNAS[columna];
-        }
-
-        @Override
-        public Object getValueAt(int fila, int columna) {
-            CierreProveedor cierre = cierres.get(fila);
-            switch (columna) {
-                case 0:
-                    return cierre.getFechaCierre() == null ? "" : cierre.getFechaCierre().format(FORMATO_FECHA);
-                case 1:
-                    return cierre.getFechaPago() == null ? "" : cierre.getFechaPago().format(FORMATO_FECHA);
-                case 2:
-                    return FORMATO_VALOR.format(cierre.getValorTotal() == null ? BigDecimal.ZERO : cierre.getValorTotal());
-                case 3:
-                    return cierre.getEstado();
+                    return estaPagada(compra) ? EstadoCompra.PAGADA : EstadoCompra.PENDIENTE;
                 default:
                     return "";
             }

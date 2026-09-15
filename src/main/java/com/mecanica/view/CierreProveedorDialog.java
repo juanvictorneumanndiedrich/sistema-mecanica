@@ -15,6 +15,12 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 
 /**
+ * ATENCION -- clase huerfana (2026-09-15): ninguna pantalla abre mas este
+ * dialogo, el flujo de "cierre de cuenta" fue reemplazado por Compra
+ * funcionando como notinha con boton Pagar directo (ver
+ * CompraController.pagar). Se mantiene solo para no romper la compilacion
+ * mientras el usuario no borra este archivo a mano.
+ *
  * Dialogo modal para las dos etapas manuales del cierre de cuenta de un
  * Proveedor (ver CierreProveedorController):
  *
@@ -148,7 +154,7 @@ public class CierreProveedorDialog extends JDialog {
 
         BigDecimal total = BigDecimal.ZERO;
         for (Compra compra : pendientes) {
-            total = total.add(compra.getValor());
+            total = total.add(compra.getValorTotal());
         }
 
         JLabel labelTotal = new JLabel("Total: Gs. " + FORMATO_VALOR.format(total));
@@ -211,9 +217,9 @@ public class CierreProveedorDialog extends JDialog {
                 case 0:
                     return compra.getFecha().format(FORMATO);
                 case 1:
-                    return compra.getDescripcion() == null ? "" : compra.getDescripcion();
+                    return compra.getNumero() == null ? "" : "Nota N° " + compra.getNumero();
                 case 2:
-                    return FORMATO_VALOR.format(compra.getValor());
+                    return FORMATO_VALOR.format(compra.getValorTotal());
                 default:
                     return "";
             }

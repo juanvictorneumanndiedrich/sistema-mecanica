@@ -1,6 +1,5 @@
 package com.mecanica.dao;
 
-import com.mecanica.enums.FormaPagoCompra;
 import com.mecanica.model.Compra;
 import com.mecanica.model.Proveedor;
 import com.mecanica.util.HibernateUtil;
@@ -17,7 +16,7 @@ public class CompraDAO extends AbstractGenericDAO<Compra, Long> {
 
     public List<Compra> listarPorFornecedor(Proveedor proveedor) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            String hql = "FROM Compra c WHERE c.proveedor = :proveedor ORDER BY c.fecha DESC";
+            String hql = "FROM Compra c WHERE c.proveedor = :proveedor ORDER BY c.numero DESC";
             Query<Compra> query = session.createQuery(hql, Compra.class);
             query.setParameter("proveedor", proveedor);
             return query.list();
@@ -25,19 +24,16 @@ public class CompraDAO extends AbstractGenericDAO<Compra, Long> {
     }
 
     /**
-     * Compras cargadas en la cuenta del proveedor que todavia no entraron en
-     * ningun CierreProveedor -- es lo que alimenta la pantalla de nuevo
-     * cierre.
+     * Lo usa el Controller para generar el proximo numero secuencial de la
+     * notinha (numero actual + 1). Devuelve null si todavia no existe
+     * ninguna Compra -- mismo patron de OrdenDeServicioDAO.buscarMayorNumero.
      */
-    public List<Compra> listarPendientesDeCierre(Proveedor proveedor) {
+    public Long buscarMayorNumero() {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            String hql = "FROM Compra c WHERE c.proveedor = :proveedor "
-                    + "AND c.formaPago = :forma AND c.cierreProveedor IS NULL "
-                    + "ORDER BY c.fecha";
-            Query<Compra> query = session.createQuery(hql, Compra.class);
-            query.setParameter("proveedor", proveedor);
-            query.setParameter("forma", FormaPagoCompra.CARGADA_EN_CUENTA_PROVEEDOR);
-            return query.list();
+            String hql = "SELECT MAX(c.numero) FROM Compra c";
+            Query<Long> query = session.createQuery(hql, Long.class);
+            List<Long> resultado = query.list();
+            return resultado.isEmpty() ? null : resultado.get(0);
         }
     }
 }

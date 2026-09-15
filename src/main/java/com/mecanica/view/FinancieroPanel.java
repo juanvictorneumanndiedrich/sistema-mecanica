@@ -7,6 +7,7 @@ import com.mecanica.model.MovimientoFinanciero;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
@@ -154,6 +155,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         panel.setBorder(BorderFactory.createEmptyBorder(14, 0, 0, 0));
 
         estilizarTabla(tablaMovimientos);
+        tablaMovimientos.getColumnModel().getColumn(4).setCellRenderer(new ColorValorRenderer(modeloMovimientos));
         panel.add(new JScrollPane(tablaMovimientos), BorderLayout.CENTER);
 
         labelError.setForeground(Paleta.ROJO_ERROR);
@@ -320,6 +322,31 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         ResultadoFiltro(List<MovimientoFinanciero> movimientos, BigDecimal saldo) {
             this.movimientos = movimientos;
             this.saldo = saldo;
+        }
+    }
+
+    // ---------------------------------------------------------------- Colores de tabla
+
+    /**
+     * Pinta la columna "Valor (Gs.)": verde para entradas (ingresos) y rojo
+     * para salidas (gastos), sin importar si la fila esta seleccionada.
+     */
+    private static class ColorValorRenderer extends DefaultTableCellRenderer {
+        private final TablaMovimientosModel modelo;
+
+        ColorValorRenderer(TablaMovimientosModel modelo) {
+            this.modelo = modelo;
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable tabla, Object valor, boolean seleccionado,
+                boolean conFoco, int fila, int columna) {
+            Component componente = super.getTableCellRendererComponent(tabla, valor, seleccionado, conFoco, fila, columna);
+            MovimientoFinanciero movimiento = modelo.getMovimiento(tabla.convertRowIndexToModel(fila));
+            componente.setForeground(movimiento.getTipo() == TipoMovimientoFinanciero.ENTRADA
+                    ? Paleta.VERDE_EXITO
+                    : Paleta.ROJO_ERROR);
+            return componente;
         }
     }
 
