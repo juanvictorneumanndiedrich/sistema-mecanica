@@ -1,6 +1,7 @@
 package com.mecanica.view;
 
 import com.mecanica.model.Cliente;
+import com.mecanica.util.Validaciones;
 
 import javax.swing.*;
 import java.awt.*;
@@ -56,7 +57,7 @@ public class ClienteFormDialog extends JDialog {
         gbc.anchor = GridBagConstraints.WEST;
 
         int fila = agregarCampo(formulario, gbc, 0, "NOMBRE *", campoNombre);
-        fila = agregarCampo(formulario, gbc, fila, "DOCUMENTO (CI/RUC)", campoDocumento);
+        fila = agregarCampo(formulario, gbc, fila, "DOCUMENTO (CI/RUC) *", campoDocumento);
         fila = agregarCampo(formulario, gbc, fila, "TELEFONO", campoTelefono);
         fila = agregarCampo(formulario, gbc, fila, "DIRECCION", campoDireccion);
 
@@ -115,9 +116,31 @@ public class ClienteFormDialog extends JDialog {
     }
 
     private void onGuardar() {
+        labelError.setText(" ");
+
         String nombre = campoNombre.getText().trim();
-        if (nombre.isEmpty()) {
-            labelError.setText("El nombre es obligatorio.");
+        if (Validaciones.esVacio(nombre)) {
+            labelError.setText("Debe ingresar el nombre del cliente.");
+            return;
+        }
+        if (!Validaciones.soloLetras(nombre)) {
+            labelError.setText("El nombre solo puede contener letras.");
+            return;
+        }
+
+        String documento = campoDocumento.getText().trim();
+        if (Validaciones.esVacio(documento)) {
+            labelError.setText("Debe ingresar el documento (CI/RUC) del cliente.");
+            return;
+        }
+        if (!Validaciones.documentoValido(documento)) {
+            labelError.setText("El documento debe contener solo numeros, con un guion opcional (ej: 80012345-6).");
+            return;
+        }
+
+        String telefono = campoTelefono.getText().trim();
+        if (!telefono.isEmpty() && !Validaciones.soloNumeros(telefono)) {
+            labelError.setText("El telefono debe contener solo numeros.");
             return;
         }
 
@@ -125,8 +148,8 @@ public class ClienteFormDialog extends JDialog {
             cliente = new Cliente();
         }
         cliente.setNombre(nombre);
-        cliente.setDocumento(vacioComoNull(campoDocumento.getText()));
-        cliente.setTelefono(vacioComoNull(campoTelefono.getText()));
+        cliente.setDocumento(documento);
+        cliente.setTelefono(vacioComoNull(telefono));
         cliente.setDireccion(vacioComoNull(campoDireccion.getText()));
 
         confirmado = true;

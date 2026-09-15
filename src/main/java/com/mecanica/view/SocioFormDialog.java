@@ -1,6 +1,7 @@
 package com.mecanica.view;
 
 import com.mecanica.model.Socio;
+import com.mecanica.util.Validaciones;
 
 import javax.swing.*;
 import java.awt.*;
@@ -123,9 +124,27 @@ public class SocioFormDialog extends JDialog {
     }
 
     private void onGuardar() {
+        labelError.setText(" ");
+
         String nombre = campoNombre.getText().trim();
-        if (nombre.isEmpty()) {
-            labelError.setText("El nombre es obligatorio.");
+        if (Validaciones.esVacio(nombre)) {
+            labelError.setText("Debe ingresar el nombre del socio.");
+            return;
+        }
+        if (!Validaciones.soloLetras(nombre)) {
+            labelError.setText("El nombre solo puede contener letras.");
+            return;
+        }
+
+        String documento = campoDocumento.getText().trim();
+        if (!documento.isEmpty() && !Validaciones.documentoValido(documento)) {
+            labelError.setText("El documento debe contener solo numeros, con un guion opcional.");
+            return;
+        }
+
+        String telefono = campoTelefono.getText().trim();
+        if (!telefono.isEmpty() && !Validaciones.soloNumeros(telefono)) {
+            labelError.setText("El telefono debe contener solo numeros.");
             return;
         }
 
@@ -133,8 +152,8 @@ public class SocioFormDialog extends JDialog {
             socio = new Socio();
         }
         socio.setNombre(nombre);
-        socio.setDocumento(vacioComoNull(campoDocumento.getText()));
-        socio.setTelefono(vacioComoNull(campoTelefono.getText()));
+        socio.setDocumento(vacioComoNull(documento));
+        socio.setTelefono(vacioComoNull(telefono));
         socio.setActivo(checkActivo.isSelected());
 
         confirmado = true;

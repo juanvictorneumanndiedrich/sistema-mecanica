@@ -1,6 +1,7 @@
 package com.mecanica.view;
 
 import com.mecanica.model.Proveedor;
+import com.mecanica.util.Validaciones;
 
 import javax.swing.*;
 import java.awt.*;
@@ -117,9 +118,27 @@ public class ProveedorFormDialog extends JDialog {
     }
 
     private void onGuardar() {
+        labelError.setText(" ");
+
         String nombre = campoNombre.getText().trim();
-        if (nombre.isEmpty()) {
-            labelError.setText("El nombre es obligatorio.");
+        if (Validaciones.esVacio(nombre)) {
+            labelError.setText("Debe ingresar el nombre del proveedor.");
+            return;
+        }
+        if (!Validaciones.soloLetras(nombre)) {
+            labelError.setText("El nombre solo puede contener letras.");
+            return;
+        }
+
+        String documento = campoDocumento.getText().trim();
+        if (!documento.isEmpty() && !Validaciones.documentoValido(documento)) {
+            labelError.setText("El documento debe contener solo numeros, con un guion opcional (ej: 80012345-6).");
+            return;
+        }
+
+        String telefono = campoTelefono.getText().trim();
+        if (!telefono.isEmpty() && !Validaciones.soloNumeros(telefono)) {
+            labelError.setText("El telefono debe contener solo numeros.");
             return;
         }
 
@@ -127,8 +146,8 @@ public class ProveedorFormDialog extends JDialog {
             proveedor = new Proveedor();
         }
         proveedor.setNombre(nombre);
-        proveedor.setDocumento(vacioComoNull(campoDocumento.getText()));
-        proveedor.setTelefono(vacioComoNull(campoTelefono.getText()));
+        proveedor.setDocumento(vacioComoNull(documento));
+        proveedor.setTelefono(vacioComoNull(telefono));
         proveedor.setContacto(vacioComoNull(campoContacto.getText()));
 
         confirmado = true;

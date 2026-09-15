@@ -1,6 +1,7 @@
 package com.mecanica.view;
 
 import com.mecanica.enums.TipoMovimientoFinanciero;
+import com.mecanica.util.Validaciones;
 
 import javax.swing.*;
 import java.awt.*;
@@ -125,7 +126,7 @@ public class MovimientoManualDialog extends JDialog {
         gbc.insets = new Insets(4, 0, 0, 0);
         formulario.add(campoValor, gbc);
 
-        JLabel labelDescripcion = new JLabel("DESCRIPCION");
+        JLabel labelDescripcion = new JLabel("DESCRIPCION *");
         labelDescripcion.setForeground(Paleta.GRIS_TEXTO);
         labelDescripcion.setFont(new Font("Segoe UI", Font.BOLD, 11));
         gbc.gridy = 6;
@@ -180,6 +181,8 @@ public class MovimientoManualDialog extends JDialog {
 
     /** Acepta tanto "150000" como "150.000" (separador de miles paraguayo) para el valor. */
     private void onRegistrar() {
+        labelError.setText(" ");
+
         LocalDate fechaIngresada;
         try {
             fechaIngresada = LocalDate.parse(campoFecha.getText().trim(), FORMATO_FECHA);
@@ -201,10 +204,16 @@ public class MovimientoManualDialog extends JDialog {
             return;
         }
 
+        String descripcionIngresada = campoDescripcion.getText().trim();
+        if (Validaciones.esVacio(descripcionIngresada)) {
+            labelError.setText("Debe ingresar una descripcion para el movimiento.");
+            return;
+        }
+
         fecha = fechaIngresada;
         tipo = (TipoMovimientoFinanciero) comboTipo.getSelectedItem();
         valor = valorIngresado;
-        descripcion = campoDescripcion.getText().trim();
+        descripcion = descripcionIngresada;
         confirmado = true;
         dispose();
     }

@@ -1,6 +1,7 @@
 package com.mecanica.view;
 
 import com.mecanica.model.Usuario;
+import com.mecanica.util.Validaciones;
 
 import javax.swing.*;
 import java.awt.*;
@@ -177,22 +178,37 @@ public class UsuarioFormDialog extends JDialog {
     }
 
     private void onGuardar() {
+        labelError.setText(" ");
+
         String nombre = campoNombre.getText().trim();
-        if (nombre.isEmpty()) {
-            labelError.setText("El nombre es obligatorio.");
+        if (Validaciones.esVacio(nombre)) {
+            labelError.setText("Debe ingresar el nombre del usuario.");
             return;
         }
+        if (!Validaciones.soloLetras(nombre)) {
+            labelError.setText("El nombre solo puede contener letras.");
+            return;
+        }
+
         String login = campoLogin.getText().trim();
-        if (login.isEmpty()) {
-            labelError.setText("El login es obligatorio.");
+        if (Validaciones.esVacio(login)) {
+            labelError.setText("Debe ingresar el login del usuario.");
+            return;
+        }
+        if (!Validaciones.soloLetrasYNumeros(login)) {
+            labelError.setText("El login solo puede contener letras y numeros, sin espacios ni simbolos.");
             return;
         }
 
         String claveIngresada = null;
         if (esNuevo) {
             claveIngresada = new String(campoClaveInicial.getPassword());
-            if (claveIngresada.isBlank()) {
+            if (Validaciones.esVacio(claveIngresada)) {
                 labelError.setText("La contrasena inicial es obligatoria.");
+                return;
+            }
+            if (!Validaciones.longitudMinima(claveIngresada, 6)) {
+                labelError.setText("La contrasena debe tener al menos 6 caracteres.");
                 return;
             }
         }

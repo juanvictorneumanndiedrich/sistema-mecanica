@@ -1,6 +1,7 @@
 package com.mecanica.view;
 
 import com.mecanica.model.Empleado;
+import com.mecanica.util.Validaciones;
 
 import javax.swing.*;
 import java.awt.*;
@@ -144,9 +145,33 @@ public class EmpleadoFormDialog extends JDialog {
     }
 
     private void onGuardar() {
+        labelError.setText(" ");
+
         String nombre = campoNombre.getText().trim();
-        if (nombre.isEmpty()) {
-            labelError.setText("El nombre es obligatorio.");
+        if (Validaciones.esVacio(nombre)) {
+            labelError.setText("Debe ingresar el nombre del empleado.");
+            return;
+        }
+        if (!Validaciones.soloLetras(nombre)) {
+            labelError.setText("El nombre solo puede contener letras.");
+            return;
+        }
+
+        String documento = campoDocumento.getText().trim();
+        if (!documento.isEmpty() && !Validaciones.documentoValido(documento)) {
+            labelError.setText("El documento debe contener solo numeros, con un guion opcional.");
+            return;
+        }
+
+        String telefono = campoTelefono.getText().trim();
+        if (!telefono.isEmpty() && !Validaciones.soloNumeros(telefono)) {
+            labelError.setText("El telefono debe contener solo numeros.");
+            return;
+        }
+
+        String cargo = campoCargo.getText().trim();
+        if (!cargo.isEmpty() && !Validaciones.soloLetras(cargo)) {
+            labelError.setText("El cargo solo puede contener letras.");
             return;
         }
 
@@ -180,9 +205,9 @@ public class EmpleadoFormDialog extends JDialog {
             empleado = new Empleado();
         }
         empleado.setNombre(nombre);
-        empleado.setDocumento(vacioComoNull(campoDocumento.getText()));
-        empleado.setTelefono(vacioComoNull(campoTelefono.getText()));
-        empleado.setCargo(vacioComoNull(campoCargo.getText()));
+        empleado.setDocumento(vacioComoNull(documento));
+        empleado.setTelefono(vacioComoNull(telefono));
+        empleado.setCargo(vacioComoNull(cargo));
         empleado.setSalarioBase(salarioBase);
         empleado.setFechaAdmision(fechaAdmision);
         empleado.setActivo(checkActivo.isSelected());

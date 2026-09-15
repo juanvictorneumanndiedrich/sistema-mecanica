@@ -1,5 +1,7 @@
 package com.mecanica.view;
 
+import com.mecanica.util.Validaciones;
+
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -128,13 +130,18 @@ public class CambiarClaveDialog extends JDialog {
         String nueva = new String(campoNuevaClave.getPassword());
         String confirmar = new String(campoConfirmarClave.getPassword());
 
+        boolean longitudOk = Validaciones.longitudMinima(nueva, 6);
         boolean coinciden = !nueva.isEmpty() && nueva.equals(confirmar);
-        botonGuardar.setEnabled(coinciden);
+        botonGuardar.setEnabled(coinciden && longitudOk);
 
-        if (nueva.isEmpty() || confirmar.isEmpty() || coinciden) {
+        if (nueva.isEmpty() && confirmar.isEmpty()) {
             labelError.setText(" ");
-        } else {
+        } else if (!longitudOk) {
+            labelError.setText("La contrasena debe tener al menos 6 caracteres.");
+        } else if (!coinciden) {
             labelError.setText("Las contrasenas no coinciden.");
+        } else {
+            labelError.setText(" ");
         }
     }
 
