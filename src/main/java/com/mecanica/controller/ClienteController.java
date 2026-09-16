@@ -83,6 +83,54 @@ public class ClienteController {
         }
     }
 
+    /**
+     * Retira en efectivo un credito a favor que el cliente ya tiene (saldo
+     * NEGATIVO -- el cliente pago de mas en algun momento). Suma el valor al
+     * saldo (lo acerca a cero) y genera el MovimientoFinanciero
+     * correspondiente (SALIDA / DEVOLUCION_CLIENTE), ya que es dinero real
+     * que sale de la caja de la mecanica. Misma transaccion atomica que
+     * registrarPagamento. No deja retirar mas de lo que hay de credito
+     * disponible.
+     */
+    public void retirarSaldo(Cliente cliente, BigDecimal valor, String descripcion) {
+        if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("El valor a retirar debe ser mayor que cero.");
+        }
+
+        Transaction tx = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            tx = session.beginTransaction();
+
+            Cliente clienteGerenciado = session.get(Cliente.class, cliente.getId());
+            BigDecimal credito = clienteGerenciado.getSaldo().negate();
+            if (credito.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("El cliente no tiene credito a favor para retirar.");
+            }
+            if (valor.compareTo(credito) > 0) {
+                throw new IllegalArgumentException(
+                        "El valor a retirar no puede ser mayor que el credito disponible (Gs. " + credito + ").");
+            }
+            clienteGerenciado.setSaldo(clienteGerenciado.getSaldo().add(valor));
+            session.merge(clienteGerenciado);
+
+            MovimientoFinanciero movimiento = new MovimientoFinanciero();
+            movimiento.setFecha(LocalDate.now());
+            movimiento.setTipo(TipoMovimientoFinanciero.SALIDA);
+            movimiento.setCategoria(CategoriaMovimientoFinanciero.DEVOLUCION_CLIENTE);
+            movimiento.setValor(valor);
+            movimiento.setDescripcion(descripcion);
+            movimiento.setCliente(clienteGerenciado);
+            session.persist(movimiento);
+
+            tx.commit();
+        } catch (RuntimeException e) {
+            if (tx != null && tx.isActive()) {
+                tx.rollback();
+            }
+            throw e;
+        }
+    }
+
     private void validar(Cliente cliente) {
         if (cliente.getNombre() == null || cliente.getNombre().isBlank()) {
             throw new IllegalArgumentException("El nombre del cliente es obligatorio.");

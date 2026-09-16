@@ -87,6 +87,54 @@ public class ProveedorController {
         }
     }
 
+    /**
+     * Registra que el proveedor devuelve en efectivo un credito a favor que
+     * la mecanica ya tiene con el (saldo del proveedor NEGATIVO -- la
+     * mecanica le pago de mas en algun momento). Suma el valor al saldo (lo
+     * acerca a cero) y genera el MovimientoFinanciero correspondiente
+     * (ENTRADA / DEVOLUCION_PROVEEDOR), ya que es dinero real que entra a la
+     * caja de la mecanica. Misma transaccion atomica que registrarPagamento.
+     * No deja retirar mas de lo que hay de credito disponible.
+     */
+    public void retirarSaldo(Proveedor proveedor, BigDecimal valor, String descripcion) {
+        if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("El valor a retirar debe ser mayor que cero.");
+        }
+
+        Transaction tx = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            tx = session.beginTransaction();
+
+            Proveedor proveedorGerenciado = session.get(Proveedor.class, proveedor.getId());
+            BigDecimal credito = proveedorGerenciado.getSaldo().negate();
+            if (credito.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("La mecanica no tiene credito a favor con este proveedor.");
+            }
+            if (valor.compareTo(credito) > 0) {
+                throw new IllegalArgumentException(
+                        "El valor a retirar no puede ser mayor que el credito disponible (Gs. " + credito + ").");
+            }
+            proveedorGerenciado.setSaldo(proveedorGerenciado.getSaldo().add(valor));
+            session.merge(proveedorGerenciado);
+
+            MovimientoFinanciero movimiento = new MovimientoFinanciero();
+            movimiento.setFecha(LocalDate.now());
+            movimiento.setTipo(TipoMovimientoFinanciero.ENTRADA);
+            movimiento.setCategoria(CategoriaMovimientoFinanciero.DEVOLUCION_PROVEEDOR);
+            movimiento.setValor(valor);
+            movimiento.setDescripcion(descripcion);
+            movimiento.setProveedor(proveedorGerenciado);
+            session.persist(movimiento);
+
+            tx.commit();
+        } catch (RuntimeException e) {
+            if (tx != null && tx.isActive()) {
+                tx.rollback();
+            }
+            throw e;
+        }
+    }
+
     private void validar(Proveedor proveedor) {
         if (proveedor.getNombre() == null || proveedor.getNombre().isBlank()) {
             throw new IllegalArgumentException("El nombre del proveedor es obligatorio.");

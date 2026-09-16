@@ -59,6 +59,7 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
     private final BotonPlano botonEditarProveedor = new BotonPlano("EDITAR", Paleta.AZUL, Paleta.AZUL_CLARO);
     private final BotonPlano botonEliminarProveedor = new BotonPlano("ELIMINAR", Paleta.ROJO_ERROR, Paleta.ROJO_ERROR.brighter());
     private final BotonPlano botonPagoProveedor = new BotonPlano("REGISTRAR PAGO", Paleta.AZUL, Paleta.AZUL_CLARO);
+    private final BotonPlano botonRetirarSaldoProveedor = new BotonPlano("RETIRAR SALDO", Paleta.VERDE_EXITO, Paleta.VERDE_EXITO.brighter());
     private final BotonPlano botonNuevaCompra = new BotonPlano("NUEVA COMPRA", Paleta.AZUL, Paleta.AZUL_CLARO);
     private final BotonPlano botonVerEditarCompra = new BotonPlano("VER / EDITAR ITEMS", Paleta.AZUL, Paleta.AZUL_CLARO);
     private final BotonPlano botonEliminarCompra = new BotonPlano("ELIMINAR NOTA", Paleta.ROJO_ERROR, Paleta.ROJO_ERROR.brighter());
@@ -79,6 +80,7 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
         botonEditarProveedor.setEnabled(false);
         botonEliminarProveedor.setEnabled(false);
         botonPagoProveedor.setEnabled(false);
+        botonRetirarSaldoProveedor.setEnabled(false);
         actualizarEstadoBotonesDetalle();
         actualizarEstadoBotonesCompra();
 
@@ -146,9 +148,11 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
         botonEditarProveedor.addActionListener(e -> onEditarProveedor());
         botonEliminarProveedor.addActionListener(e -> onEliminarProveedor());
         botonPagoProveedor.addActionListener(e -> onRegistrarPago());
+        botonRetirarSaldoProveedor.addActionListener(e -> onRetirarSaldo());
         botones.add(botonEditarProveedor);
         botones.add(botonEliminarProveedor);
         botones.add(botonPagoProveedor);
+        botones.add(botonRetirarSaldoProveedor);
         panel.add(botones, BorderLayout.SOUTH);
 
         return panel;
@@ -319,6 +323,8 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
         botonEditarProveedor.setEnabled(hay);
         botonEliminarProveedor.setEnabled(hay);
         botonPagoProveedor.setEnabled(hay);
+        botonRetirarSaldoProveedor.setEnabled(hay && seleccionado.getSaldo() != null
+                && seleccionado.getSaldo().compareTo(BigDecimal.ZERO) < 0);
         labelDetalleTitulo.setText(hay ? seleccionado.getNombre() : "Proveedor");
         actualizarSaldoMostrado(seleccionado);
         actualizarEstadoBotonesDetalle();
@@ -513,6 +519,46 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
                 if (error != null) {
                     JOptionPane.showMessageDialog(ComprasProveedoresPanel.this,
                             error.getMessage(), "No fue posible registrar el pago", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                cargarProveedores(campoBusqueda.getText().trim());
+            }
+        }.execute();
+    }
+
+    /** El proveedor devuelve en efectivo un credito a favor que la mecanica ya tiene (saldo negativo). */
+    private void onRetirarSaldo() {
+        Proveedor seleccionado = proveedorSeleccionado();
+        if (seleccionado == null) {
+            return;
+        }
+        BigDecimal credito = seleccionado.getSaldo() == null ? BigDecimal.ZERO : seleccionado.getSaldo().negate();
+        RetirarSaldoDialog dialogo = new RetirarSaldoDialog(ventana(), seleccionado.getNombre(), credito);
+        dialogo.setVisible(true);
+        if (!dialogo.isConfirmado()) {
+            return;
+        }
+
+        setHabilitado(false);
+        new SwingWorker<Void, Void>() {
+            RuntimeException error;
+
+            @Override
+            protected Void doInBackground() {
+                try {
+                    proveedorController.retirarSaldo(seleccionado, dialogo.getValor(), dialogo.getDescripcion());
+                } catch (RuntimeException e) {
+                    error = e;
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                setHabilitado(true);
+                if (error != null) {
+                    JOptionPane.showMessageDialog(ComprasProveedoresPanel.this,
+                            error.getMessage(), "No fue posible retirar el saldo", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
                 cargarProveedores(campoBusqueda.getText().trim());

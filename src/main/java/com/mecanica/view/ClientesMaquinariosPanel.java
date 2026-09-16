@@ -43,6 +43,7 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
     private final BotonPlano botonEditarCliente = new BotonPlano("EDITAR", Paleta.AZUL, Paleta.AZUL_CLARO);
     private final BotonPlano botonEliminarCliente = new BotonPlano("ELIMINAR", Paleta.ROJO_ERROR, Paleta.ROJO_ERROR.brighter());
     private final BotonPlano botonPagoCliente = new BotonPlano("REGISTRAR PAGO", Paleta.AZUL, Paleta.AZUL_CLARO);
+    private final BotonPlano botonRetirarSaldoCliente = new BotonPlano("RETIRAR SALDO", Paleta.VERDE_EXITO, Paleta.VERDE_EXITO.brighter());
     private final BotonPlano botonNuevoMaquinario = new BotonPlano("NUEVO", Paleta.AZUL, Paleta.AZUL_CLARO);
     private final BotonPlano botonEditarMaquinario = new BotonPlano("EDITAR", Paleta.AZUL, Paleta.AZUL_CLARO);
     private final BotonPlano botonEliminarMaquinario = new BotonPlano("ELIMINAR", Paleta.ROJO_ERROR, Paleta.ROJO_ERROR.brighter());
@@ -63,6 +64,7 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
         botonEditarCliente.setEnabled(false);
         botonEliminarCliente.setEnabled(false);
         botonPagoCliente.setEnabled(false);
+        botonRetirarSaldoCliente.setEnabled(false);
         actualizarEstadoBotonesMaquinario();
 
         cargarClientes(null);
@@ -129,9 +131,11 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
         botonEditarCliente.addActionListener(e -> onEditarCliente());
         botonEliminarCliente.addActionListener(e -> onEliminarCliente());
         botonPagoCliente.addActionListener(e -> onRegistrarPago());
+        botonRetirarSaldoCliente.addActionListener(e -> onRetirarSaldo());
         botones.add(botonEditarCliente);
         botones.add(botonEliminarCliente);
         botones.add(botonPagoCliente);
+        botones.add(botonRetirarSaldoCliente);
         panel.add(botones, BorderLayout.SOUTH);
 
         return panel;
@@ -258,6 +262,8 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
         botonEditarCliente.setEnabled(hay);
         botonEliminarCliente.setEnabled(hay);
         botonPagoCliente.setEnabled(hay);
+        botonRetirarSaldoCliente.setEnabled(hay && seleccionado.getSaldo() != null
+                && seleccionado.getSaldo().compareTo(BigDecimal.ZERO) < 0);
         labelMaquinariosTitulo.setText(hay ? "Maquinarios de " + seleccionado.getNombre() : "Maquinarios");
         cargarMaquinarios(seleccionado);
     }
@@ -420,6 +426,46 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
                 if (error != null) {
                     JOptionPane.showMessageDialog(ClientesMaquinariosPanel.this,
                             error.getMessage(), "No fue posible registrar el pago", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                cargarClientes(campoBusqueda.getText().trim());
+            }
+        }.execute();
+    }
+
+    /** Retira en efectivo un credito a favor que el cliente ya tiene (saldo negativo). */
+    private void onRetirarSaldo() {
+        Cliente seleccionado = clienteSeleccionado();
+        if (seleccionado == null) {
+            return;
+        }
+        BigDecimal credito = seleccionado.getSaldo() == null ? BigDecimal.ZERO : seleccionado.getSaldo().negate();
+        RetirarSaldoDialog dialogo = new RetirarSaldoDialog(ventana(), seleccionado.getNombre(), credito);
+        dialogo.setVisible(true);
+        if (!dialogo.isConfirmado()) {
+            return;
+        }
+
+        setHabilitado(false);
+        new SwingWorker<Void, Void>() {
+            RuntimeException error;
+
+            @Override
+            protected Void doInBackground() {
+                try {
+                    clienteController.retirarSaldo(seleccionado, dialogo.getValor(), dialogo.getDescripcion());
+                } catch (RuntimeException e) {
+                    error = e;
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                setHabilitado(true);
+                if (error != null) {
+                    JOptionPane.showMessageDialog(ClientesMaquinariosPanel.this,
+                            error.getMessage(), "No fue posible retirar el saldo", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
                 cargarClientes(campoBusqueda.getText().trim());

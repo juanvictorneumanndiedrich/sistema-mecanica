@@ -209,7 +209,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         panel.setBorder(BorderFactory.createEmptyBorder(14, 0, 0, 0));
 
         estilizarTabla(tablaMovimientos);
-        tablaMovimientos.getColumnModel().getColumn(4).setCellRenderer(new ColorValorRenderer(modeloMovimientos));
+        tablaMovimientos.getColumnModel().getColumn(5).setCellRenderer(new ColorValorRenderer(modeloMovimientos));
         panel.add(new JScrollPane(tablaMovimientos), BorderLayout.CENTER);
 
         labelError.setForeground(Paleta.ROJO_ERROR);
@@ -821,7 +821,8 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
     }
 
     private static class TablaMovimientosModel extends AbstractTableModel {
-        private static final String[] COLUMNAS = {"Fecha", "Tipo", "Categoria", "Descripcion", "Valor (Gs.)"};
+        private static final String[] COLUMNAS =
+                {"Fecha", "Tipo", "Categoria", "De quien", "Descripcion", "Valor (Gs.)"};
         private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
         private static final DateTimeFormatter FORMATO_FECHA_TABLA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -851,6 +852,20 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
             return COLUMNAS[columna];
         }
 
+        /** Nombre del cliente, proveedor o empleado de origen -- vacio en movimientos manuales. */
+        private String deQuien(MovimientoFinanciero movimiento) {
+            if (movimiento.getCliente() != null) {
+                return movimiento.getCliente().getNombre();
+            }
+            if (movimiento.getProveedor() != null) {
+                return movimiento.getProveedor().getNombre();
+            }
+            if (movimiento.getEmpleado() != null) {
+                return movimiento.getEmpleado().getNombre();
+            }
+            return "";
+        }
+
         @Override
         public Object getValueAt(int fila, int columna) {
             MovimientoFinanciero movimiento = movimientos.get(fila);
@@ -862,8 +877,10 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
                 case 2:
                     return movimiento.getCategoria() == null ? "" : movimiento.getCategoria().name().replace("_", " ");
                 case 3:
-                    return movimiento.getDescripcion() == null ? "" : movimiento.getDescripcion();
+                    return deQuien(movimiento);
                 case 4:
+                    return movimiento.getDescripcion() == null ? "" : movimiento.getDescripcion();
+                case 5:
                     String valorFormateado = FORMATO_VALOR.format(
                             movimiento.getValor() == null ? BigDecimal.ZERO : movimiento.getValor());
                     return movimiento.getTipo() == TipoMovimientoFinanciero.SALIDA

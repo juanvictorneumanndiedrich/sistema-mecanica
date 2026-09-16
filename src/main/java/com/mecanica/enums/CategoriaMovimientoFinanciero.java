@@ -15,10 +15,19 @@ package com.mecanica.enums;
  * historico que preservar. El gasto real del empleado es SALARIO_EMPLEADO,
  * generado una sola vez por EmpleadoController.pagarSalario() con el
  * salario base COMPLETO (sin descontar vales/adelantos).
+ *
+ * DEVOLUCION_CLIENTE / DEVOLUCION_PROVEEDOR (agregadas 2026-09-16): retiro en
+ * efectivo de un credito a favor ya existente (saldo negativo del Cliente o
+ * del Proveedor). DEVOLUCION_CLIENTE es SALIDA (la mecanica le devuelve
+ * dinero al cliente); DEVOLUCION_PROVEEDOR es ENTRADA (el proveedor le
+ * devuelve dinero a la mecanica). Ver ClienteController.retirarSaldo /
+ * ProveedorController.retirarSaldo.
  */
 public enum CategoriaMovimientoFinanciero {
     PAGO_CLIENTE,
     COMPRA_PROVEEDOR,
     SALARIO_EMPLEADO,
+    DEVOLUCION_CLIENTE,
+    DEVOLUCION_PROVEEDOR,
     OTRO
 }
