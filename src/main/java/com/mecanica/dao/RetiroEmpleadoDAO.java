@@ -15,11 +15,15 @@ public class RetiroEmpleadoDAO extends AbstractGenericDAO<RetiroEmpleado, Long> 
         super(RetiroEmpleado.class);
     }
 
-    /** Usado no cierre mensal do empleado (soma vales + adiantamentos do periodo). */
+    /**
+     * Usado en el cierre/pago mensual del empleado (suma vales + adelantos
+     * del periodo). Solo trae los retiros NO liquidados todavia -- uno ya
+     * usado en un pago de salario anterior no debe contarse de nuevo.
+     */
     public List<RetiroEmpleado> listarPorEmpleadoYPeriodo(Empleado empleado, LocalDate inicio, LocalDate fin) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             String hql = "FROM RetiroEmpleado r WHERE r.empleado = :empleado "
-                    + "AND r.fecha BETWEEN :inicio AND :fin ORDER BY r.fecha";
+                    + "AND r.fecha BETWEEN :inicio AND :fin AND r.liquidado = false ORDER BY r.fecha";
             Query<RetiroEmpleado> query = session.createQuery(hql, RetiroEmpleado.class);
             query.setParameter("empleado", empleado);
             query.setParameter("inicio", inicio);

@@ -7,8 +7,11 @@ import java.time.LocalDate;
 
 /**
  * Retiro cargado para un empleado (vale semanal opcional de valor
- * fijo, o adelanto). El cierre mensual del empleado se calcula
- * sumando los retiros del periodo -- no hay una entidad separada para eso.
+ * fijo, o adelanto). NO genera gasto en el momento -- solo sirve como
+ * descuento a aplicar sobre el salario base, en el pago mensual real
+ * (ver EmpleadoController.pagarSalario). El campo liquidado marca que
+ * ese retiro ya fue usado/descontado en un pago de salario, para que no
+ * se cuente de nuevo en el mes siguiente.
  */
 @Entity
 @Table(name = "retiro_empleado")
@@ -34,6 +37,11 @@ public class RetiroEmpleado {
 
     @Column(length = 200)
     private String observacion;
+
+    @Column(nullable = false)
+    private boolean liquidado = false;
+
+    private LocalDate fechaLiquidacion;
 
     public RetiroEmpleado() {
     }
@@ -84,5 +92,21 @@ public class RetiroEmpleado {
 
     public void setObservacion(String observacion) {
         this.observacion = observacion;
+    }
+
+    public boolean isLiquidado() {
+        return liquidado;
+    }
+
+    public void setLiquidado(boolean liquidado) {
+        this.liquidado = liquidado;
+    }
+
+    public LocalDate getFechaLiquidacion() {
+        return fechaLiquidacion;
+    }
+
+    public void setFechaLiquidacion(LocalDate fechaLiquidacion) {
+        this.fechaLiquidacion = fechaLiquidacion;
     }
 }

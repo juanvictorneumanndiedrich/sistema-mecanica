@@ -1,25 +1,20 @@
 package com.mecanica.controller;
 
-import com.mecanica.enums.CategoriaMovimientoFinanciero;
-import com.mecanica.enums.TipoMovimientoFinanciero;
 import com.mecanica.enums.TipoRetiroEmpleado;
 import com.mecanica.model.Empleado;
-import com.mecanica.model.MovimientoFinanciero;
 import com.mecanica.model.RetiroEmpleado;
 import com.mecanica.dao.RetiroEmpleadoDAO;
-import com.mecanica.util.HibernateUtil;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Controller de RetiroEmpleado. A diferencia del retiro de socio,
- * el retiro de empleado (vale semanal o adelanto) SI entra como gasto
- * -- genera un MovimientoFinanciero (SALIDA / RETIRO_EMPLEADO) en la misma
- * transaccion.
+ * Controller de RetiroEmpleado. El retiro de empleado (vale semanal o
+ * adelanto) NO genera gasto en el momento -- es solo un registro que
+ * despues se descuenta del salario base, en el pago mensual real
+ * (ver EmpleadoController.pagarSalario). El unico gasto que entra en
+ * Financiero es el salario completo, generado una vez al mes.
  */
 public class RetiroEmpleadoController {
 
@@ -32,35 +27,13 @@ public class RetiroEmpleadoController {
         }
         LocalDate fechaFinal = fecha != null ? fecha : LocalDate.now();
 
-        Transaction tx = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            tx = session.beginTransaction();
-
-            RetiroEmpleado retiro = new RetiroEmpleado();
-            retiro.setEmpleado(empleado);
-            retiro.setTipo(tipo);
-            retiro.setValor(valor);
-            retiro.setFecha(fechaFinal);
-            retiro.setObservacion(observacion);
-            session.persist(retiro);
-
-            MovimientoFinanciero movimiento = new MovimientoFinanciero();
-            movimiento.setFecha(fechaFinal);
-            movimiento.setTipo(TipoMovimientoFinanciero.SALIDA);
-            movimiento.setCategoria(CategoriaMovimientoFinanciero.RETIRO_EMPLEADO);
-            movimiento.setValor(valor);
-            movimiento.setDescripcion(observacion);
-            movimiento.setEmpleado(empleado);
-            session.persist(movimiento);
-
-            tx.commit();
-            return retiro;
-        } catch (RuntimeException e) {
-            if (tx != null && tx.isActive()) {
-                tx.rollback();
-            }
-            throw e;
-        }
+        RetiroEmpleado retiro = new RetiroEmpleado();
+        retiro.setEmpleado(empleado);
+        retiro.setTipo(tipo);
+        retiro.setValor(valor);
+        retiro.setFecha(fechaFinal);
+        retiro.setObservacion(observacion);
+        return retiradaFuncionarioDAO.guardar(retiro);
     }
 
     public List<RetiroEmpleado> listarPorEmpleadoYPeriodo(Empleado empleado, LocalDate inicio, LocalDate fin) {

@@ -2,7 +2,6 @@ package com.mecanica.view;
 
 import com.mecanica.controller.ChequePreDatadoController;
 import com.mecanica.controller.MovimientoFinancieroController;
-import com.mecanica.enums.CategoriaMovimientoFinanciero;
 import com.mecanica.enums.TipoMovimientoFinanciero;
 import com.mecanica.model.ChequePreDatado;
 import com.mecanica.model.MovimientoFinanciero;
@@ -21,8 +20,9 @@ import java.util.List;
 
 /**
  * Pantalla real del area "Financiero": extracto de MovimientoFinanciero
- * filtrado por periodo (fecha desde/hasta) y, opcionalmente, por categoria,
- * con el saldo del periodo (ver MovimientoFinancieroController.calcularSaldoPeriodo).
+ * filtrado por periodo (fecha desde/hasta) y, opcionalmente, por tipo
+ * (Ingreso/Egreso), con el saldo del periodo (ver
+ * MovimientoFinancieroController.calcularSaldoPeriodo).
  *
  * Tiene dos pestañas: "Movimientos" (el extracto de siempre, mayormente de
  * solo lectura -- los movimientos los generan otros flujos del sistema:
@@ -41,7 +41,9 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
 
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DecimalFormat FORMATO_SALDO = new DecimalFormat("#,##0");
-    private static final String TODAS_LAS_CATEGORIAS = "(todas)";
+    private static final String TODOS_LOS_TIPOS = "(todos)";
+    private static final String TIPO_INGRESO = "Ingreso";
+    private static final String TIPO_EGRESO = "Egreso";
 
     private final MovimientoFinancieroController movimientoFinancieroController = new MovimientoFinancieroController();
     private final ChequePreDatadoController chequeController = new ChequePreDatadoController();
@@ -51,7 +53,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
 
     private final JTextField campoFechaInicio = new JTextField();
     private final JTextField campoFechaFin = new JTextField();
-    private final JComboBox<String> comboCategoria = new JComboBox<>();
+    private final JComboBox<String> comboTipo = new JComboBox<>();
     private final JLabel labelError = new JLabel(" ");
     private final JLabel labelSaldo = new JLabel(" ");
 
@@ -69,10 +71,9 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         campoFechaInicio.setText(hoy.withDayOfMonth(1).format(FORMATO_FECHA));
         campoFechaFin.setText(hoy.format(FORMATO_FECHA));
 
-        comboCategoria.addItem(TODAS_LAS_CATEGORIAS);
-        for (CategoriaMovimientoFinanciero categoria : CategoriaMovimientoFinanciero.values()) {
-            comboCategoria.addItem(categoria.name());
-        }
+        comboTipo.addItem(TODOS_LOS_TIPOS);
+        comboTipo.addItem(TIPO_INGRESO);
+        comboTipo.addItem(TIPO_EGRESO);
 
         JLabel titulo = new JLabel("Financiero");
         titulo.setFont(new Font("Segoe UI", Font.BOLD, 17));
@@ -133,16 +134,16 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         panel.add(armarCampoFiltro("DESDE", campoFechaInicio, 100));
         panel.add(armarCampoFiltro("HASTA", campoFechaFin, 100));
 
-        JPanel panelCategoria = new JPanel(new BorderLayout(0, 4));
-        panelCategoria.setOpaque(false);
-        JLabel labelCategoria = new JLabel("CATEGORIA");
-        labelCategoria.setForeground(Paleta.GRIS_TEXTO);
-        labelCategoria.setFont(new Font("Segoe UI", Font.BOLD, 10));
-        comboCategoria.setPreferredSize(new Dimension(190, 32));
-        comboCategoria.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        panelCategoria.add(labelCategoria, BorderLayout.NORTH);
-        panelCategoria.add(comboCategoria, BorderLayout.CENTER);
-        panel.add(panelCategoria);
+        JPanel panelTipo = new JPanel(new BorderLayout(0, 4));
+        panelTipo.setOpaque(false);
+        JLabel labelTipo = new JLabel("TIPO");
+        labelTipo.setForeground(Paleta.GRIS_TEXTO);
+        labelTipo.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        comboTipo.setPreferredSize(new Dimension(150, 32));
+        comboTipo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        panelTipo.add(labelTipo, BorderLayout.NORTH);
+        panelTipo.add(comboTipo, BorderLayout.CENTER);
+        panel.add(panelTipo);
 
         BotonPlano botonFiltrar = new BotonPlano("FILTRAR");
         botonFiltrar.addActionListener(e -> buscarMovimientos());
@@ -267,14 +268,19 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
             return;
         }
 
-        String categoriaSeleccionada = (String) comboCategoria.getSelectedItem();
-        CategoriaMovimientoFinanciero categoria = TODAS_LAS_CATEGORIAS.equals(categoriaSeleccionada)
-                ? null
-                : CategoriaMovimientoFinanciero.valueOf(categoriaSeleccionada);
+        String tipoSeleccionado = (String) comboTipo.getSelectedItem();
+        TipoMovimientoFinanciero tipo;
+        if (TIPO_INGRESO.equals(tipoSeleccionado)) {
+            tipo = TipoMovimientoFinanciero.ENTRADA;
+        } else if (TIPO_EGRESO.equals(tipoSeleccionado)) {
+            tipo = TipoMovimientoFinanciero.SALIDA;
+        } else {
+            tipo = null;
+        }
 
         LocalDate inicioFinal = inicio;
         LocalDate finFinal = fin;
-        CategoriaMovimientoFinanciero categoriaFinal = categoria;
+        TipoMovimientoFinanciero tipoFinal = tipo;
 
         setHabilitado(false);
         new SwingWorker<ResultadoFiltro, Void>() {
@@ -285,16 +291,16 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
                 try {
                     List<MovimientoFinanciero> movimientos =
                             movimientoFinancieroController.listarPorPeriodo(inicioFinal, finFinal);
-                    if (categoriaFinal != null) {
+                    if (tipoFinal != null) {
                         List<MovimientoFinanciero> filtrados = new ArrayList<>();
                         for (MovimientoFinanciero m : movimientos) {
-                            if (m.getCategoria() == categoriaFinal) {
+                            if (m.getTipo() == tipoFinal) {
                                 filtrados.add(m);
                             }
                         }
                         movimientos = filtrados;
                     }
-                    // El saldo es siempre del periodo completo (no cambia con el filtro de categoria).
+                    // El saldo es siempre del periodo completo (no cambia con el filtro de tipo).
                     BigDecimal saldo = movimientoFinancieroController.calcularSaldoPeriodo(inicioFinal, finFinal);
                     return new ResultadoFiltro(movimientos, saldo);
                 } catch (Exception e) {

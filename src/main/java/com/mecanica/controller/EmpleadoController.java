@@ -2,8 +2,15 @@ package com.mecanica.controller;
 
 import com.mecanica.dao.EmpleadoDAO;
 import com.mecanica.dao.RetiroEmpleadoDAO;
+import com.mecanica.enums.CategoriaMovimientoFinanciero;
+import com.mecanica.enums.TipoMovimientoFinanciero;
 import com.mecanica.model.Empleado;
+import com.mecanica.model.MovimientoFinanciero;
 import com.mecanica.model.RetiroEmpleado;
+import com.mecanica.util.HibernateUtil;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+import org.hibernate.query.Query;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -11,9 +18,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Controller de Empleado: CRUD y el calculo del cierre mensual
- * (recibo con vales, adelantos, total descontado y valor liquido).
- * El registro de los retiros en si queda en el RetiroEmpleadoController.
+ * Controller de Empleado: CRUD, la vista previa del cierre mensual
+ * (recibo con vales, adelantos, total descontado y valor liquido) y el
+ * pago de salario en si. El registro de los retiros en si queda en el
+ * RetiroEmpleadoController.
  */
 public class EmpleadoController {
 
@@ -46,10 +54,11 @@ public class EmpleadoController {
     }
 
     /**
-     * Arma el cierre mensual del empleado: suma los vales y
-     * adelantos del periodo y calcula el valor liquido a pagar
-     * (salario base - total descontado). Se usa para generar el recibo
-     * imprimible (JasperReports).
+     * Vista previa del cierre mensual del empleado: suma los vales y
+     * adelantos del periodo (todavia no liquidados) y calcula el valor
+     * liquido informativo (salario base - total descontado). NO genera
+     * nada en Financiero ni marca ningun retiro -- es solo el "borrador"
+     * que se muestra antes de pagar. El pago real es pagarSalario().
      */
     public ResultadoCierreMensual calcularCierreMensual(Empleado empleado, LocalDate inicio, LocalDate fin) {
         List<RetiroEmpleado> retiradas = retiradaFuncionarioDAO.listarPorEmpleadoYPeriodo(empleado, inicio, fin);
@@ -60,6 +69,71 @@ public class EmpleadoController {
         BigDecimal salarioBase = empleado.getSalarioBase() != null ? empleado.getSalarioBase() : BigDecimal.ZERO;
         BigDecimal valorLiquido = salarioBase.subtract(totalDescontado);
         return new ResultadoCierreMensual(empleado, new ArrayList<>(retiradas), totalDescontado, valorLiquido);
+    }
+
+    /**
+     * Pago real del salario mensual del empleado. Hace, todo en una sola
+     * transaccion atomica:
+     * 1) Busca los retiros (vales/adelantos) del periodo que todavia NO
+     *    fueron liquidados y los marca como liquidados (fechaLiquidacion
+     *    = hoy), para que no se cuenten de nuevo en un pago futuro.
+     * 2) Genera UN SOLO MovimientoFinanciero (SALIDA / SALARIO_EMPLEADO)
+     *    con el SALARIO BASE COMPLETO -- sin descontar los vales/adelantos,
+     *    que son solo informativos para el recibo impreso.
+     * El resultado devuelto (con los retiros consumidos, el total
+     * descontado y el valor liquido) es lo que se imprime como recibo.
+     */
+    public ResultadoCierreMensual pagarSalario(Empleado empleado, LocalDate inicio, LocalDate fin) {
+        if (empleado == null) {
+            throw new IllegalArgumentException("Debe seleccionar un empleado.");
+        }
+        if (inicio == null || fin == null || fin.isBefore(inicio)) {
+            throw new IllegalArgumentException("El periodo del pago es invalido.");
+        }
+        LocalDate fechaPago = LocalDate.now();
+
+        Transaction tx = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            tx = session.beginTransaction();
+
+            Query<RetiroEmpleado> query = session.createQuery(
+                    "FROM RetiroEmpleado r WHERE r.empleado = :empleado "
+                            + "AND r.fecha BETWEEN :inicio AND :fin AND r.liquidado = false ORDER BY r.fecha",
+                    RetiroEmpleado.class);
+            query.setParameter("empleado", empleado);
+            query.setParameter("inicio", inicio);
+            query.setParameter("fin", fin);
+            List<RetiroEmpleado> retiradas = query.list();
+
+            BigDecimal totalDescontado = BigDecimal.ZERO;
+            for (RetiroEmpleado r : retiradas) {
+                totalDescontado = totalDescontado.add(r.getValor());
+                r.setLiquidado(true);
+                r.setFechaLiquidacion(fechaPago);
+                session.merge(r);
+            }
+
+            BigDecimal salarioBase = empleado.getSalarioBase() != null ? empleado.getSalarioBase() : BigDecimal.ZERO;
+            BigDecimal valorLiquido = salarioBase.subtract(totalDescontado);
+
+            MovimientoFinanciero movimiento = new MovimientoFinanciero();
+            movimiento.setFecha(fechaPago);
+            movimiento.setTipo(TipoMovimientoFinanciero.SALIDA);
+            movimiento.setCategoria(CategoriaMovimientoFinanciero.SALARIO_EMPLEADO);
+            movimiento.setValor(salarioBase);
+            movimiento.setDescripcion("Salario de " + empleado.getNombre() + " ("
+                    + inicio + " a " + fin + ")");
+            movimiento.setEmpleado(empleado);
+            session.persist(movimiento);
+
+            tx.commit();
+            return new ResultadoCierreMensual(empleado, new ArrayList<>(retiradas), totalDescontado, valorLiquido);
+        } catch (RuntimeException e) {
+            if (tx != null && tx.isActive()) {
+                tx.rollback();
+            }
+            throw e;
+        }
     }
 
     private void validar(Empleado empleado) {

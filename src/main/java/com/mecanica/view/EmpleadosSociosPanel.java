@@ -26,11 +26,12 @@ import java.util.List;
  * (EmpleadoController.calcularCierreMensual) o la liquidacion 50/50 de
  * los socios (SocioController.calcularLiquidacion).
  *
- * IMPORTANTE sobre los retiros: el retiro de EMPLEADO genera gasto
- * (MovimientoFinanciero) automaticamente dentro de
- * RetiroEmpleadoController.registrarRetirada -- esta pantalla solo llama
- * al Controller. El retiro de SOCIO NO genera ningun MovimientoFinanciero
- * (se descuenta recien en la liquidacion) -- ver RetiroSocioController.
+ * IMPORTANTE sobre los retiros: el retiro de EMPLEADO (vale/adelanto) NO
+ * genera gasto en el momento -- es solo un registro que se descuenta
+ * recien en el pago mensual real, con el boton "PAGAR SALARIO"
+ * (EmpleadoController.pagarSalario). El retiro de SOCIO tampoco genera
+ * ningun MovimientoFinanciero (se descuenta en la liquidacion) -- ver
+ * RetiroSocioController.
  *
  * Las llamadas al Controller (que abren Session de Hibernate) corren en
  * SwingWorker para no trabar la interfaz, siguiendo el mismo patron ya
@@ -56,6 +57,7 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
     private final BotonPlano botonEliminarEmpleado = new BotonPlano("ELIMINAR", Paleta.ROJO_ERROR, Paleta.ROJO_ERROR.brighter());
     private final BotonPlano botonRetiroEmpleado = new BotonPlano("REGISTRAR RETIRO", Paleta.AZUL, Paleta.AZUL_CLARO);
     private final BotonPlano botonCalcularCierre = new BotonPlano("CALCULAR");
+    private final BotonPlano botonPagarSalario = new BotonPlano("PAGAR SALARIO", Paleta.VERDE_EXITO, Paleta.VERDE_EXITO.brighter());
 
     private final BotonPlano botonEditarSocio = new BotonPlano("EDITAR", Paleta.AZUL, Paleta.AZUL_CLARO);
     private final BotonPlano botonEliminarSocio = new BotonPlano("ELIMINAR", Paleta.ROJO_ERROR, Paleta.ROJO_ERROR.brighter());
@@ -175,6 +177,8 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
         filtro.add(campoFinEmpleado);
         botonCalcularCierre.addActionListener(e -> onCalcularCierre());
         filtro.add(botonCalcularCierre);
+        botonPagarSalario.addActionListener(e -> onPagarSalario());
+        filtro.add(botonPagarSalario);
         centro.add(filtro, BorderLayout.NORTH);
 
         LocalDate hoy = LocalDate.now();
@@ -402,6 +406,7 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
         botonEliminarEmpleado.setEnabled(hay);
         botonRetiroEmpleado.setEnabled(hay);
         botonCalcularCierre.setEnabled(hay);
+        botonPagarSalario.setEnabled(hay);
     }
 
     private void actualizarEstadoBotonesSocio() {
@@ -602,6 +607,74 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
                     return;
                 }
                 areaReporteEmpleado.setText(formatearCierre(resultado, inicio, fin));
+            }
+        }.execute();
+    }
+
+    private void onPagarSalario() {
+        Empleado seleccionado = empleadoSeleccionado();
+        if (seleccionado == null) {
+            return;
+        }
+
+        LocalDate inicio;
+        LocalDate fin;
+        try {
+            inicio = LocalDate.parse(campoInicioEmpleado.getText().trim(), FORMATO_FECHA);
+            fin = LocalDate.parse(campoFinEmpleado.getText().trim(), FORMATO_FECHA);
+        } catch (DateTimeParseException e) {
+            JOptionPane.showMessageDialog(this,
+                    "Las fechas del periodo deben tener el formato DD/MM/AAAA.",
+                    "Periodo invalido", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        BigDecimal salarioBase = seleccionado.getSalarioBase() != null
+                ? seleccionado.getSalarioBase() : BigDecimal.ZERO;
+        int opcion = JOptionPane.showConfirmDialog(this,
+                "Se va a registrar el salario de " + seleccionado.getNombre() + " (Gs. "
+                        + FORMATO_VALOR.format(salarioBase) + ") como gasto en Financiero.\n"
+                        + "Los vales/adelantos del periodo " + campoInicioEmpleado.getText().trim()
+                        + " a " + campoFinEmpleado.getText().trim() + " quedaran liquidados "
+                        + "(no se descontaran de nuevo).\n\nEsta accion no se puede deshacer. Desea continuar?",
+                "Confirmar pago de salario", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (opcion != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        LocalDate inicioFinal = inicio;
+        LocalDate finFinal = fin;
+        setHabilitado(false);
+        new SwingWorker<EmpleadoController.ResultadoCierreMensual, Void>() {
+            Exception error;
+
+            @Override
+            protected EmpleadoController.ResultadoCierreMensual doInBackground() {
+                try {
+                    return empleadoController.pagarSalario(seleccionado, inicioFinal, finFinal);
+                } catch (Exception e) {
+                    error = e;
+                    return null;
+                }
+            }
+
+            @Override
+            protected void done() {
+                setHabilitado(true);
+                EmpleadoController.ResultadoCierreMensual resultado = null;
+                try {
+                    resultado = get();
+                } catch (Exception e) {
+                    error = e;
+                }
+                if (error != null || resultado == null) {
+                    JOptionPane.showMessageDialog(EmpleadosSociosPanel.this,
+                            error != null ? error.getMessage() : "No fue posible registrar el pago.",
+                            "No fue posible pagar el salario", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                areaReporteEmpleado.setText(formatearCierre(resultado, inicioFinal, finFinal)
+                        + "\n>> SALARIO PAGADO -- gasto registrado en Financiero.\n");
             }
         }.execute();
     }
