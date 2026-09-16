@@ -10,6 +10,7 @@ import org.hibernate.Session;
 import org.hibernate.Transaction;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -50,11 +51,38 @@ public class ClienteController {
      * (no de una OS especifica) y genera el MovimientoFinanciero correspondiente
      * (ENTRADA / PAGO_CLIENTE). Las dos operaciones ocurren en la misma
      * transaccion, para nunca descontar el saldo sin registrar el movimiento (o
-     * vice-versa).
+     * vice-versa). Sin descuento (uso comun).
      */
     public void registrarPagamento(Cliente cliente, BigDecimal valor, String descripcion) {
-        if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
+        registrarPagamento(cliente, valor, BigDecimal.ZERO, descripcion);
+    }
+
+    /**
+     * Igual que registrarPagamento(Cliente, BigDecimal, String), pero permite
+     * perdonar un pedazo de la DEUDA del cliente (descuento).
+     *
+     * Ojo con la semantica, que es la parte facil de confundir: valorPagado
+     * es la plata que el cliente entrega AHORA -- entra ENTERA en
+     * Financiero, porque es plata de verdad que llego a la caja. El
+     * descuento es aparte: se perdona de la cuenta sin que nadie pague nada
+     * por el. Por eso el saldo baja por (valorPagado + descuento): con un
+     * saldo de 150.000 y 10% de descuento (15.000), el cliente paga 135.000
+     * y la cuenta queda en cero.
+     *
+     * El porcentaje que ese descuento representa sobre el saldo que habia
+     * antes del pago se calcula y se guarda junto, solo para mostrarlo en la
+     * tabla de Movimientos.
+     *
+     * @param descuentoValor monto perdonado en Gs. (BigDecimal.ZERO o null = sin descuento)
+     */
+    public void registrarPagamento(Cliente cliente, BigDecimal valorPagado, BigDecimal descuentoValor,
+            String descripcion) {
+        if (valorPagado == null || valorPagado.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("El valor del pago debe ser mayor que cero.");
+        }
+        BigDecimal descuento = descuentoValor == null ? BigDecimal.ZERO : descuentoValor;
+        if (descuento.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("El descuento no puede ser negativo.");
         }
 
         Transaction tx = null;
@@ -62,14 +90,26 @@ public class ClienteController {
             tx = session.beginTransaction();
 
             Cliente clienteGerenciado = session.get(Cliente.class, cliente.getId());
-            clienteGerenciado.setSaldo(clienteGerenciado.getSaldo().subtract(valor));
+            BigDecimal saldoAntes = clienteGerenciado.getSaldo();
+            if (descuento.compareTo(saldoAntes) > 0) {
+                throw new IllegalArgumentException(
+                        "El descuento no puede ser mayor que el saldo del cliente (Gs. " + saldoAntes + ").");
+            }
+            clienteGerenciado.setSaldo(saldoAntes.subtract(valorPagado).subtract(descuento));
             session.merge(clienteGerenciado);
 
             MovimientoFinanciero movimiento = new MovimientoFinanciero();
             movimiento.setFecha(LocalDate.now());
             movimiento.setTipo(TipoMovimientoFinanciero.ENTRADA);
             movimiento.setCategoria(CategoriaMovimientoFinanciero.PAGO_CLIENTE);
-            movimiento.setValor(valor);
+            movimiento.setValor(valorPagado);
+            if (descuento.compareTo(BigDecimal.ZERO) > 0) {
+                movimiento.setDescuentoValor(descuento);
+                if (saldoAntes.compareTo(BigDecimal.ZERO) > 0) {
+                    movimiento.setDescuentoPorcentaje(descuento.multiply(BigDecimal.valueOf(100))
+                            .divide(saldoAntes, 2, RoundingMode.HALF_UP));
+                }
+            }
             movimiento.setDescripcion(descripcion);
             movimiento.setCliente(clienteGerenciado);
             session.persist(movimiento);

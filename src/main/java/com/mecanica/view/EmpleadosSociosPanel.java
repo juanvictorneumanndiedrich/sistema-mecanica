@@ -19,18 +19,26 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 
 /**
- * Pantalla real del area "Empleados y Socios": una pestana "Empleados" y
- * una pestana "Socios", cada una con su propia lista (Nuevo/Editar/
- * Eliminar), un boton "Registrar Retiro" y un panel de reporte que
- * calcula, para un periodo elegido, el cierre mensual del empleado
- * (EmpleadoController.calcularCierreMensual) o la liquidacion 50/50 de
- * los socios (SocioController.calcularLiquidacion).
+ * Pantalla real del area "Empleados y Socios": una pestana "Empleados" (con
+ * su lista Nuevo/Editar/Eliminar, "Registrar Retiro" y un panel de reporte
+ * que calcula, para un periodo elegido, el cierre mensual del empleado --
+ * EmpleadoController.calcularCierreMensual) y una pestana "Socios" mas
+ * simple, solo cadastro (Nuevo/Editar/Eliminar) y "Registrar Retiro".
+ *
+ * La pestana Socios NO tiene ningun calculo de liquidacion/division de
+ * ganancia -- eso, a partir del 2026-09-16, vive solo en la pestana "Cierre
+ * Mensual" de Financiero (ver CierreMensualController), para no tener dos
+ * lugares distintos calculando la misma division 50/50 de formas diferentes
+ * (uno con ganancia tipeada a mano y descuento por rango de fechas, otro
+ * automatico y con registro permanente). El retiro de socio que se registra
+ * aca solo queda pendiente hasta el proximo Cierre Mensual, que es quien lo
+ * descuenta de verdad.
  *
  * IMPORTANTE sobre los retiros: el retiro de EMPLEADO (vale/adelanto) NO
  * genera gasto en el momento -- es solo un registro que se descuenta
  * recien en el pago mensual real, con el boton "PAGAR SALARIO"
  * (EmpleadoController.pagarSalario). El retiro de SOCIO tampoco genera
- * ningun MovimientoFinanciero (se descuenta en la liquidacion) -- ver
+ * ningun MovimientoFinanciero (se descuenta en el Cierre Mensual) -- ver
  * RetiroSocioController.
  *
  * Las llamadas al Controller (que abren Session de Hibernate) corren en
@@ -62,16 +70,10 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
     private final BotonPlano botonEditarSocio = new BotonPlano("EDITAR", Paleta.AZUL, Paleta.AZUL_CLARO);
     private final BotonPlano botonEliminarSocio = new BotonPlano("ELIMINAR", Paleta.ROJO_ERROR, Paleta.ROJO_ERROR.brighter());
     private final BotonPlano botonRetiroSocio = new BotonPlano("REGISTRAR RETIRO", Paleta.AZUL, Paleta.AZUL_CLARO);
-    private final BotonPlano botonCalcularLiquidacion = new BotonPlano("CALCULAR");
 
     private final JTextField campoInicioEmpleado = new JTextField();
     private final JTextField campoFinEmpleado = new JTextField();
     private final JTextArea areaReporteEmpleado = new JTextArea();
-
-    private final JTextField campoGananciaTotal = new JTextField();
-    private final JTextField campoInicioSocio = new JTextField();
-    private final JTextField campoFinSocio = new JTextField();
-    private final JTextArea areaReporteSocio = new JTextArea();
 
     public EmpleadosSociosPanel() {
         super(new BorderLayout());
@@ -212,13 +214,7 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
         encabezado.add(botonNuevoSocio, BorderLayout.EAST);
         panel.add(encabezado, BorderLayout.NORTH);
 
-        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
-                armarListaSocios(), armarReporteSocios());
-        splitPane.setResizeWeight(0.5);
-        splitPane.setBorder(null);
-        splitPane.setDividerSize(10);
-        splitPane.setOpaque(false);
-        panel.add(splitPane, BorderLayout.CENTER);
+        panel.add(armarListaSocios(), BorderLayout.CENTER);
 
         return panel;
     }
@@ -245,45 +241,6 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
         botones.add(botonRetiroSocio);
         panel.add(botones, BorderLayout.SOUTH);
 
-        return panel;
-    }
-
-    private JComponent armarReporteSocios() {
-        JPanel panel = new JPanel(new BorderLayout(0, 8));
-        panel.setOpaque(false);
-
-        JLabel titulo = new JLabel("Liquidacion del Periodo (division fija 50% / 50%)");
-        titulo.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        titulo.setForeground(Paleta.AZUL_OSCURO);
-        panel.add(titulo, BorderLayout.NORTH);
-
-        JPanel centro = new JPanel(new BorderLayout(0, 8));
-        centro.setOpaque(false);
-
-        JPanel filtro = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        filtro.setOpaque(false);
-        filtro.add(crearEtiquetaFiltro("GANANCIA TOTAL (Gs.)"));
-        estilizarCampoFiltro(campoGananciaTotal);
-        campoGananciaTotal.setPreferredSize(new Dimension(120, 30));
-        filtro.add(campoGananciaTotal);
-        filtro.add(crearEtiquetaFiltro("DESDE"));
-        estilizarCampoFiltro(campoInicioSocio);
-        filtro.add(campoInicioSocio);
-        filtro.add(crearEtiquetaFiltro("HASTA"));
-        estilizarCampoFiltro(campoFinSocio);
-        filtro.add(campoFinSocio);
-        botonCalcularLiquidacion.addActionListener(e -> onCalcularLiquidacion());
-        filtro.add(botonCalcularLiquidacion);
-        centro.add(filtro, BorderLayout.NORTH);
-
-        LocalDate hoy = LocalDate.now();
-        campoInicioSocio.setText(hoy.withDayOfMonth(1).format(FORMATO_FECHA));
-        campoFinSocio.setText(hoy.format(FORMATO_FECHA));
-
-        estilizarAreaReporte(areaReporteSocio);
-        centro.add(new JScrollPane(areaReporteSocio), BorderLayout.CENTER);
-
-        panel.add(centro, BorderLayout.CENTER);
         return panel;
     }
 
@@ -817,8 +774,8 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
             protected Void doInBackground() {
                 try {
                     // A proposito: NO se crea ningun MovimientoFinanciero aca ni dentro
-                    // del Controller -- el retiro de socio solo se descuenta en la
-                    // liquidacion (ver SocioController.calcularLiquidacion).
+                    // del Controller -- el retiro de socio solo se descuenta en el
+                    // proximo Cierre Mensual (ver CierreMensualController).
                     retiroSocioController.registrarRetirada(seleccionado, dialogo.getValor(),
                             dialogo.getFecha(), dialogo.getObservacion());
                 } catch (RuntimeException e) {
@@ -836,85 +793,6 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
                 }
             }
         }.execute();
-    }
-
-    private void onCalcularLiquidacion() {
-        BigDecimal gananciaTotal;
-        String textoGanancia = campoGananciaTotal.getText().trim().replace(".", "").replace(",", ".");
-        try {
-            gananciaTotal = new BigDecimal(textoGanancia);
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this,
-                    "Ingrese la ganancia total del periodo (valor numerico valido).",
-                    "Valor invalido", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        LocalDate inicio;
-        LocalDate fin;
-        try {
-            inicio = LocalDate.parse(campoInicioSocio.getText().trim(), FORMATO_FECHA);
-            fin = LocalDate.parse(campoFinSocio.getText().trim(), FORMATO_FECHA);
-        } catch (DateTimeParseException e) {
-            JOptionPane.showMessageDialog(this,
-                    "Las fechas del periodo deben tener el formato DD/MM/AAAA.",
-                    "Periodo invalido", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        BigDecimal gananciaFinal = gananciaTotal;
-        setHabilitado(false);
-        new SwingWorker<List<SocioController.ResultadoLiquidacion>, Void>() {
-            Exception error;
-
-            @Override
-            protected List<SocioController.ResultadoLiquidacion> doInBackground() {
-                try {
-                    return socioController.calcularLiquidacion(gananciaFinal, inicio, fin);
-                } catch (Exception e) {
-                    error = e;
-                    return List.of();
-                }
-            }
-
-            @Override
-            protected void done() {
-                setHabilitado(true);
-                List<SocioController.ResultadoLiquidacion> resultado = List.of();
-                try {
-                    resultado = get();
-                } catch (Exception e) {
-                    error = e;
-                }
-                if (error != null) {
-                    mostrarErrorConexion();
-                    return;
-                }
-                areaReporteSocio.setText(formatearLiquidacion(resultado, gananciaFinal, inicio, fin));
-            }
-        }.execute();
-    }
-
-    private String formatearLiquidacion(List<SocioController.ResultadoLiquidacion> resultado,
-                                         BigDecimal gananciaTotal, LocalDate inicio, LocalDate fin) {
-        StringBuilder texto = new StringBuilder();
-        texto.append("Periodo: ").append(inicio.format(FORMATO_FECHA))
-                .append(" a ").append(fin.format(FORMATO_FECHA)).append('\n');
-        texto.append("Ganancia total del periodo: Gs. ").append(FORMATO_VALOR.format(gananciaTotal)).append('\n');
-        texto.append("Division entre socios: 50% / 50% (fija)\n\n");
-
-        if (resultado.isEmpty()) {
-            texto.append("(no hay socios activos)\n");
-            return texto.toString();
-        }
-
-        for (SocioController.ResultadoLiquidacion linea : resultado) {
-            texto.append(linea.getSocio().getNombre()).append(":\n");
-            texto.append("  Parte de ganancia (50%):  Gs. ").append(FORMATO_VALOR.format(linea.getParteGanancia())).append('\n');
-            texto.append("  Ya retirado en el periodo: Gs. ").append(FORMATO_VALOR.format(linea.getYaRetirado())).append('\n');
-            texto.append("  Saldo a favor del socio:   Gs. ").append(FORMATO_VALOR.format(linea.getValorARecibir())).append("\n\n");
-        }
-        return texto.toString();
     }
 
     // ---------------------------------------------------------------- Modelos de tabla

@@ -15,7 +15,7 @@ import java.time.format.DateTimeParseException;
  * desde EmpleadosSociosPanel). IMPORTANTE: a diferencia del retiro de
  * empleado, este retiro NO genera MovimientoFinanciero -- solo queda
  * registrado para ser descontado de la parte del socio en la liquidacion
- * (ver SocioController.calcularLiquidacion y RetiroSocioController).
+ * (ver CierreMensualController y RetiroSocioController).
  */
 public class RetiroSocioDialog extends JDialog {
 

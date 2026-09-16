@@ -394,7 +394,8 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
         if (seleccionado == null) {
             return;
         }
-        PagoClienteDialog dialogo = new PagoClienteDialog(ventana(), seleccionado.getNombre());
+        PagoClienteDialog dialogo = new PagoClienteDialog(ventana(), seleccionado.getNombre(),
+                seleccionado.getSaldo());
         dialogo.setVisible(true);
         if (!dialogo.isConfirmado()) {
             return;
@@ -410,9 +411,10 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
                     if (dialogo.isChequePreDatado()) {
                         chequeController.registrarDeCliente(seleccionado, dialogo.getNumeroCheque(),
                                 dialogo.getBanco(), dialogo.getFechaVencimiento(), dialogo.getValor(),
-                                dialogo.getDescripcion());
+                                dialogo.getDescuentoValor(), dialogo.getDescripcion());
                     } else {
-                        clienteController.registrarPagamento(seleccionado, dialogo.getValor(), dialogo.getDescripcion());
+                        clienteController.registrarPagamento(seleccionado, dialogo.getValor(),
+                                dialogo.getDescuentoValor(), dialogo.getDescripcion());
                     }
                 } catch (RuntimeException e) {
                     error = e;

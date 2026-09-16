@@ -503,9 +503,10 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
                     if (dialogo.isChequePreDatado()) {
                         chequeController.registrarDeProveedor(seleccionado, dialogo.getNumeroCheque(),
                                 dialogo.getBanco(), dialogo.getFechaVencimiento(), dialogo.getValor(),
-                                dialogo.getDescripcion());
+                                dialogo.getDescuentoValor(), dialogo.getDescripcion());
                     } else {
-                        proveedorController.registrarPagamento(seleccionado, dialogo.getValor(), dialogo.getDescripcion());
+                        proveedorController.registrarPagamento(seleccionado, dialogo.getValor(),
+                                dialogo.getDescuentoValor(), dialogo.getDescripcion());
                     }
                 } catch (RuntimeException e) {
                     error = e;

@@ -10,6 +10,7 @@ import org.hibernate.Session;
 import org.hibernate.Transaction;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -55,10 +56,29 @@ public class ProveedorController {
      * COMPRA_PROVEEDOR). Las dos operaciones ocurren en la misma
      * transaccion, para nunca descontar el saldo sin registrar el gasto (o
      * vice-versa). Mismo esquema de ClienteController.registrarPagamento.
+     * Sin descuento (uso comun).
      */
     public void registrarPagamento(Proveedor proveedor, BigDecimal valor, String descripcion) {
-        if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
+        registrarPagamento(proveedor, valor, BigDecimal.ZERO, descripcion);
+    }
+
+    /**
+     * Igual que registrarPagamento(Proveedor, BigDecimal, String), pero
+     * permite perdonar un pedazo de la DEUDA con el proveedor (el proveedor
+     * nos hace un descuento). Misma semantica de
+     * ClienteController.registrarPagamento(Cliente, BigDecimal, BigDecimal,
+     * String): valorPagado es la plata que sale de verdad de la caja y entra
+     * ENTERA en Financiero; el descuento se perdona aparte, asi que el saldo
+     * baja por (valorPagado + descuento).
+     */
+    public void registrarPagamento(Proveedor proveedor, BigDecimal valorPagado, BigDecimal descuentoValor,
+            String descripcion) {
+        if (valorPagado == null || valorPagado.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("El valor del pago debe ser mayor que cero.");
+        }
+        BigDecimal descuento = descuentoValor == null ? BigDecimal.ZERO : descuentoValor;
+        if (descuento.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("El descuento no puede ser negativo.");
         }
 
         Transaction tx = null;
@@ -66,14 +86,26 @@ public class ProveedorController {
             tx = session.beginTransaction();
 
             Proveedor proveedorGerenciado = session.get(Proveedor.class, proveedor.getId());
-            proveedorGerenciado.setSaldo(proveedorGerenciado.getSaldo().subtract(valor));
+            BigDecimal saldoAntes = proveedorGerenciado.getSaldo();
+            if (descuento.compareTo(saldoAntes) > 0) {
+                throw new IllegalArgumentException(
+                        "El descuento no puede ser mayor que el saldo con el proveedor (Gs. " + saldoAntes + ").");
+            }
+            proveedorGerenciado.setSaldo(saldoAntes.subtract(valorPagado).subtract(descuento));
             session.merge(proveedorGerenciado);
 
             MovimientoFinanciero movimiento = new MovimientoFinanciero();
             movimiento.setFecha(LocalDate.now());
             movimiento.setTipo(TipoMovimientoFinanciero.SALIDA);
             movimiento.setCategoria(CategoriaMovimientoFinanciero.COMPRA_PROVEEDOR);
-            movimiento.setValor(valor);
+            movimiento.setValor(valorPagado);
+            if (descuento.compareTo(BigDecimal.ZERO) > 0) {
+                movimiento.setDescuentoValor(descuento);
+                if (saldoAntes.compareTo(BigDecimal.ZERO) > 0) {
+                    movimiento.setDescuentoPorcentaje(descuento.multiply(BigDecimal.valueOf(100))
+                            .divide(saldoAntes, 2, RoundingMode.HALF_UP));
+                }
+            }
             movimiento.setDescripcion(descripcion);
             movimiento.setProveedor(proveedorGerenciado);
             session.persist(movimiento);

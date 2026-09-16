@@ -11,7 +11,8 @@ import java.awt.*;
  * existente el formulario aparece precargado y guarda sobre el mismo
  * registro; si se abre sin socio (null), crea uno nuevo. No hay campo de
  * porcentaje de ganancia aca -- la division entre los 2 socios es siempre
- * 50%/50% fija, calculada en SocioController.calcularLiquidacion.
+ * 50%/50% fija, calculada en CierreMensualController (pestana "Cierre
+ * Mensual" de Financiero).
  */
 public class SocioFormDialog extends JDialog {
 

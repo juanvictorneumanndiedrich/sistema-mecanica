@@ -13,6 +13,7 @@ import org.hibernate.Session;
 import org.hibernate.Transaction;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -31,20 +32,42 @@ public class ChequePreDatadoController {
 
     private final ChequePreDatadoDAO chequeDAO = new ChequePreDatadoDAO();
 
-    /** Cheque pre-datado recibido de un Cliente: ya descuenta su saldo general. */
+    /**
+     * Cheque pre-datado recibido de un Cliente: ya descuenta su saldo
+     * general. Sin descuento (uso comun).
+     */
     public void registrarDeCliente(Cliente cliente, String numeroCheque, String banco,
             LocalDate fechaVencimiento, BigDecimal valor, String descripcion) {
+        registrarDeCliente(cliente, numeroCheque, banco, fechaVencimiento, valor, BigDecimal.ZERO, descripcion);
+    }
+
+    /**
+     * Igual que registrarDeCliente(...) de arriba, pero permite perdonar un
+     * pedazo de la deuda (descuento). El valor del cheque es el valor REAL
+     * del papel que el cliente entrega -- no se toca, y es el que va a
+     * entrar entero en Financiero cuando el cheque se confirme (ver
+     * confirmar()). El descuento se perdona aparte, asi que el saldo del
+     * cliente baja por (valor del cheque + descuento).
+     */
+    public void registrarDeCliente(Cliente cliente, String numeroCheque, String banco,
+            LocalDate fechaVencimiento, BigDecimal valorCheque, BigDecimal descuentoValor, String descripcion) {
         if (cliente == null) {
             throw new IllegalArgumentException("El cliente es obligatorio.");
         }
-        validar(valor, fechaVencimiento);
+        validar(valorCheque, fechaVencimiento);
+        BigDecimal descuento = validarDescuento(descuentoValor);
 
         Transaction tx = null;
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             tx = session.beginTransaction();
 
             Cliente clienteGerenciado = session.get(Cliente.class, cliente.getId());
-            clienteGerenciado.setSaldo(clienteGerenciado.getSaldo().subtract(valor));
+            BigDecimal saldoAntes = clienteGerenciado.getSaldo();
+            if (descuento.compareTo(saldoAntes) > 0) {
+                throw new IllegalArgumentException(
+                        "El descuento no puede ser mayor que el saldo del cliente (Gs. " + saldoAntes + ").");
+            }
+            clienteGerenciado.setSaldo(saldoAntes.subtract(valorCheque).subtract(descuento));
             session.merge(clienteGerenciado);
 
             ChequePreDatado cheque = new ChequePreDatado();
@@ -53,7 +76,11 @@ public class ChequePreDatadoController {
             cheque.setBanco(banco);
             cheque.setFechaRegistro(LocalDate.now());
             cheque.setFechaVencimiento(fechaVencimiento);
-            cheque.setValor(valor);
+            cheque.setValor(valorCheque);
+            if (descuento.compareTo(BigDecimal.ZERO) > 0) {
+                cheque.setDescuentoValor(descuento);
+                cheque.setDescuentoPorcentaje(calcularPorcentaje(saldoAntes, descuento));
+            }
             cheque.setDescripcion(descripcion);
             cheque.setEstado(EstadoCheque.PENDIENTE);
             session.persist(cheque);
@@ -67,20 +94,40 @@ public class ChequePreDatadoController {
         }
     }
 
-    /** Cheque pre-datado que vamos a entregar a un Proveedor: ya descuenta su saldo general. */
+    /**
+     * Cheque pre-datado que vamos a entregar a un Proveedor: ya descuenta su
+     * saldo general. Sin descuento (uso comun).
+     */
     public void registrarDeProveedor(Proveedor proveedor, String numeroCheque, String banco,
             LocalDate fechaVencimiento, BigDecimal valor, String descripcion) {
+        registrarDeProveedor(proveedor, numeroCheque, banco, fechaVencimiento, valor, BigDecimal.ZERO, descripcion);
+    }
+
+    /**
+     * Igual que registrarDeProveedor(...) de arriba, pero permite perdonar
+     * un pedazo de la deuda (descuento). Mismo esquema de
+     * registrarDeCliente(...): el valor del cheque no se toca y el saldo
+     * baja por (valor del cheque + descuento).
+     */
+    public void registrarDeProveedor(Proveedor proveedor, String numeroCheque, String banco,
+            LocalDate fechaVencimiento, BigDecimal valorCheque, BigDecimal descuentoValor, String descripcion) {
         if (proveedor == null) {
             throw new IllegalArgumentException("El proveedor es obligatorio.");
         }
-        validar(valor, fechaVencimiento);
+        validar(valorCheque, fechaVencimiento);
+        BigDecimal descuento = validarDescuento(descuentoValor);
 
         Transaction tx = null;
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             tx = session.beginTransaction();
 
             Proveedor proveedorGerenciado = session.get(Proveedor.class, proveedor.getId());
-            proveedorGerenciado.setSaldo(proveedorGerenciado.getSaldo().subtract(valor));
+            BigDecimal saldoAntes = proveedorGerenciado.getSaldo();
+            if (descuento.compareTo(saldoAntes) > 0) {
+                throw new IllegalArgumentException(
+                        "El descuento no puede ser mayor que el saldo con el proveedor (Gs. " + saldoAntes + ").");
+            }
+            proveedorGerenciado.setSaldo(saldoAntes.subtract(valorCheque).subtract(descuento));
             session.merge(proveedorGerenciado);
 
             ChequePreDatado cheque = new ChequePreDatado();
@@ -89,7 +136,11 @@ public class ChequePreDatadoController {
             cheque.setBanco(banco);
             cheque.setFechaRegistro(LocalDate.now());
             cheque.setFechaVencimiento(fechaVencimiento);
-            cheque.setValor(valor);
+            cheque.setValor(valorCheque);
+            if (descuento.compareTo(BigDecimal.ZERO) > 0) {
+                cheque.setDescuentoValor(descuento);
+                cheque.setDescuentoPorcentaje(calcularPorcentaje(saldoAntes, descuento));
+            }
             cheque.setDescripcion(descripcion);
             cheque.setEstado(EstadoCheque.PENDIENTE);
             session.persist(cheque);
@@ -146,6 +197,8 @@ public class ChequePreDatadoController {
                 origen = chequeGerenciado.getProveedor().getNombre();
             }
             movimiento.setValor(chequeGerenciado.getValor());
+            movimiento.setDescuentoValor(chequeGerenciado.getDescuentoValor());
+            movimiento.setDescuentoPorcentaje(chequeGerenciado.getDescuentoPorcentaje());
             String numero = chequeGerenciado.getNumeroCheque();
             String descripcionBase = "Cheque pre-datado"
                     + (numero == null || numero.isBlank() ? "" : " Nº " + numero)
@@ -177,5 +230,26 @@ public class ChequePreDatadoController {
         if (fechaVencimiento == null) {
             throw new IllegalArgumentException("La fecha de vencimiento del cheque es obligatoria.");
         }
+    }
+
+    /** Valida el descuento y devuelve BigDecimal.ZERO cuando no se aplico ninguno. */
+    private BigDecimal validarDescuento(BigDecimal descuentoValor) {
+        BigDecimal descuento = descuentoValor == null ? BigDecimal.ZERO : descuentoValor;
+        if (descuento.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("El descuento no puede ser negativo.");
+        }
+        return descuento;
+    }
+
+    /**
+     * Porcentaje que el descuento representa sobre el saldo que habia antes
+     * del pago -- solo para exhibicion (null cuando no hubo descuento o
+     * cuando no habia deuda).
+     */
+    private BigDecimal calcularPorcentaje(BigDecimal saldoAntes, BigDecimal descuento) {
+        if (descuento.compareTo(BigDecimal.ZERO) == 0 || saldoAntes.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+        return descuento.multiply(BigDecimal.valueOf(100)).divide(saldoAntes, 2, RoundingMode.HALF_UP);
     }
 }

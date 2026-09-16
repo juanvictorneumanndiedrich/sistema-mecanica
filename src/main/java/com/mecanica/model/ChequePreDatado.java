@@ -54,6 +54,18 @@ public class ChequePreDatado {
     @Column(length = 200)
     private String descripcion;
 
+    // Descuento (perdon de deuda) aplicado junto con este cheque, opcional.
+    // "valor" de arriba es el valor REAL del cheque -- el descuento no lo
+    // toca; lo que hace es bajar la cuenta del Cliente/Proveedor sin que
+    // nadie pague por esa parte (el saldo baja por valor + descuentoValor).
+    // Igual que en MovimientoFinanciero, estos campos son solo para
+    // exhibicion -- ver ChequePreDatadoController.
+    @Column(name = "descuento_valor", precision = 14, scale = 2)
+    private BigDecimal descuentoValor;
+
+    @Column(name = "descuento_porcentaje", precision = 5, scale = 2)
+    private BigDecimal descuentoPorcentaje;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 12)
     private EstadoCheque estado = EstadoCheque.PENDIENTE;
@@ -134,6 +146,22 @@ public class ChequePreDatado {
 
     public void setDescripcion(String descripcion) {
         this.descripcion = descripcion;
+    }
+
+    public BigDecimal getDescuentoValor() {
+        return descuentoValor;
+    }
+
+    public void setDescuentoValor(BigDecimal descuentoValor) {
+        this.descuentoValor = descuentoValor;
+    }
+
+    public BigDecimal getDescuentoPorcentaje() {
+        return descuentoPorcentaje;
+    }
+
+    public void setDescuentoPorcentaje(BigDecimal descuentoPorcentaje) {
+        this.descuentoPorcentaje = descuentoPorcentaje;
     }
 
     public EstadoCheque getEstado() {

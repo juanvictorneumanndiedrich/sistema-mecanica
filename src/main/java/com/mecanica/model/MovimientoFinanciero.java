@@ -49,6 +49,20 @@ public class MovimientoFinanciero {
     @Column(length = 200)
     private String descripcion;
 
+    // Descuento (perdon de deuda) aplicado en el pago que origino este
+    // movimiento, opcional. "valor" de arriba es SIEMPRE la plata de verdad
+    // que entro o salio de la caja -- el descuento NO lo reduce. Lo que el
+    // descuento hace es bajar la cuenta del Cliente/Proveedor sin que nadie
+    // pague por esa parte: el saldo baja por (valor + descuentoValor). El
+    // porcentaje guardado es sobre el saldo que habia antes del pago, y los
+    // dos campos existen solo para mostrarlos en la tabla de Movimientos --
+    // ver ClienteController/ProveedorController.registrarPagamento().
+    @Column(name = "descuento_valor", precision = 14, scale = 2)
+    private BigDecimal descuentoValor;
+
+    @Column(name = "descuento_porcentaje", precision = 5, scale = 2)
+    private BigDecimal descuentoPorcentaje;
+
     // Referencias opcionales al origen del movimiento (solo una de ellas
     // queda completada, de acuerdo con la categoria).
     @ManyToOne
@@ -116,6 +130,22 @@ public class MovimientoFinanciero {
 
     public void setDescripcion(String descripcion) {
         this.descripcion = descripcion;
+    }
+
+    public BigDecimal getDescuentoValor() {
+        return descuentoValor;
+    }
+
+    public void setDescuentoValor(BigDecimal descuentoValor) {
+        this.descuentoValor = descuentoValor;
+    }
+
+    public BigDecimal getDescuentoPorcentaje() {
+        return descuentoPorcentaje;
+    }
+
+    public void setDescuentoPorcentaje(BigDecimal descuentoPorcentaje) {
+        this.descuentoPorcentaje = descuentoPorcentaje;
     }
 
     public Cliente getCliente() {

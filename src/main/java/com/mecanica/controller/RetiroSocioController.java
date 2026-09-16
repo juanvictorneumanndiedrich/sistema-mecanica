@@ -11,8 +11,8 @@ import java.util.List;
 /**
  * Controller de RetiroSocio. IMPORTANTE: registrar un retiro de
  * socio NO genera MovimientoFinanciero (no se trata como gasto) -- solo
- * queda registrado aca, para ser descontado de la parte del socio en la liquidacion
- * (ver SocioController.calcularLiquidacion).
+ * queda registrado aca, para ser descontado de la parte del socio en el
+ * proximo Cierre Mensual (ver CierreMensualController).
  */
 public class RetiroSocioController {
 
