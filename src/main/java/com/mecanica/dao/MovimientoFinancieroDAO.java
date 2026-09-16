@@ -34,4 +34,17 @@ public class MovimientoFinancieroDAO extends AbstractGenericDAO<MovimientoFinanc
             return query.list();
         }
     }
+
+    /**
+     * Movimientos que todavia no entraron en ningun CierreMensual (cierre
+     * IS NULL). Se usa en la pestaña "Cierre Mensual" de Financiero, donde
+     * el usuario elige con checkbox cuales entran en el cierre de ahora.
+     */
+    public List<MovimientoFinanciero> listarPendientesDeCierre() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            String hql = "FROM MovimientoFinanciero m WHERE m.cierre IS NULL ORDER BY m.fecha";
+            Query<MovimientoFinanciero> query = session.createQuery(hql, MovimientoFinanciero.class);
+            return query.list();
+        }
+    }
 }

@@ -1,12 +1,16 @@
 package com.mecanica.view;
 
 import com.mecanica.controller.ChequePreDatadoController;
+import com.mecanica.controller.CierreMensualController;
 import com.mecanica.controller.MovimientoFinancieroController;
 import com.mecanica.enums.TipoMovimientoFinanciero;
 import com.mecanica.model.ChequePreDatado;
+import com.mecanica.model.CierreMensual;
+import com.mecanica.model.CierreSocioDetalle;
 import com.mecanica.model.MovimientoFinanciero;
 
 import javax.swing.*;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
@@ -16,7 +20,9 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Pantalla real del area "Financiero": extracto de MovimientoFinanciero
@@ -24,14 +30,18 @@ import java.util.List;
  * (Ingreso/Egreso), con el saldo del periodo (ver
  * MovimientoFinancieroController.calcularSaldoPeriodo).
  *
- * Tiene dos pestañas: "Movimientos" (el extracto de siempre, mayormente de
+ * Tiene tres pestañas: "Movimientos" (el extracto de siempre, mayormente de
  * solo lectura -- los movimientos los generan otros flujos del sistema:
  * pago de cliente, compra a proveedor, retiro de empleado, o un cheque
- * pre-datado que ya vencio y fue confirmado) y "Cheques Pendientes" (los
+ * pre-datado que ya vencio y fue confirmado), "Cheques Pendientes" (los
  * cheques pre-datados que todavia no vencieron/no fueron confirmados -- ver
- * ChequePreDatadoController). La unica accion de escritura en la pestaña de
- * Movimientos es "Nuevo Movimiento", que abre MovimientoManualDialog para
- * registrar un movimiento manual (siempre con categoria OTRO).
+ * ChequePreDatadoController) y "Cierre Mensual" (el cierre real del negocio:
+ * el usuario elige con checkbox que movimientos entran, sin importar la
+ * fecha exacta, y el sistema calcula la ganancia y la reparte 50/50 entre
+ * los socios -- ver CierreMensualController). La unica accion de escritura
+ * en la pestaña de Movimientos es "Nuevo Movimiento", que abre
+ * MovimientoManualDialog para registrar un movimiento manual (siempre con
+ * categoria OTRO).
  *
  * Las llamadas al Controller (que abren Session de Hibernate) corren en
  * SwingWorker para no trabar la interfaz, siguiendo el mismo patron ya
@@ -47,6 +57,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
 
     private final MovimientoFinancieroController movimientoFinancieroController = new MovimientoFinancieroController();
     private final ChequePreDatadoController chequeController = new ChequePreDatadoController();
+    private final CierreMensualController cierreMensualController = new CierreMensualController();
 
     private final TablaMovimientosModel modeloMovimientos = new TablaMovimientosModel();
     private final JTable tablaMovimientos = new JTable(modeloMovimientos);
@@ -61,6 +72,16 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
     private final JTable tablaCheques = new JTable(modeloCheques);
     private final BotonPlano botonConfirmarCheque = new BotonPlano("CONFIRMAR CHEQUE (VENCIDO)");
     private final JLabel labelErrorCheques = new JLabel(" ");
+
+    private final TablaPendientesCierreModel modeloPendientesCierre = new TablaPendientesCierreModel();
+    private final JTable tablaPendientesCierre = new JTable(modeloPendientesCierre);
+    private final JTextField campoDescripcionCierre = new JTextField();
+    private final BotonPlano botonCerrarMes = new BotonPlano("CERRAR MES", Paleta.VERDE_EXITO, Paleta.VERDE_EXITO.brighter());
+    private final JLabel labelErrorCierre = new JLabel(" ");
+
+    private final TablaHistoricoCierresModel modeloHistoricoCierres = new TablaHistoricoCierresModel();
+    private final JTable tablaHistoricoCierres = new JTable(modeloHistoricoCierres);
+    private final JTextArea areaReporteCierre = new JTextArea();
 
     public FinancieroPanel() {
         super(new BorderLayout());
@@ -85,17 +106,22 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         pestañas.setFont(new Font("Segoe UI", Font.BOLD, 13));
         pestañas.addTab("Movimientos", armarPestañaMovimientos());
         pestañas.addTab("Cheques Pendientes", armarPestañaCheques());
+        pestañas.addTab("Cierre Mensual", armarPestañaCierreMensual());
         add(pestañas, BorderLayout.CENTER);
 
         buscarMovimientos();
         cargarChequesPendientes();
+        cargarPendientesCierre();
+        cargarHistoricoCierres();
     }
 
-    /** Vuelve a buscar los movimientos y los cheques pendientes al entrar en esta area. */
+    /** Vuelve a buscar los movimientos, los cheques y el cierre pendiente al entrar en esta area. */
     @Override
     public void actualizar() {
         buscarMovimientos();
         cargarChequesPendientes();
+        cargarPendientesCierre();
+        cargarHistoricoCierres();
     }
 
     // ---------------------------------------------------------------- Pestaña Movimientos
@@ -234,6 +260,110 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         panel.add(pie, BorderLayout.SOUTH);
 
         return panel;
+    }
+
+    // ---------------------------------------------------------------- Pestaña Cierre Mensual
+
+    private JComponent armarPestañaCierreMensual() {
+        JPanel panel = new JPanel(new BorderLayout(0, 8));
+        panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
+
+        JLabel explicacion = new JLabel(
+                "<html>Marque los movimientos que entran en el cierre de ahora -- no tienen que ser "
+                        + "todos los del mes: puede dejar alguno para el cierre siguiente, o incluir uno "
+                        + "de un mes anterior. Al cerrar, se calcula la ganancia y se reparte 50/50 entre "
+                        + "los socios (descontando lo que cada uno ya retiro).</html>");
+        explicacion.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        explicacion.setForeground(Paleta.GRIS_TEXTO);
+        panel.add(explicacion, BorderLayout.NORTH);
+
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
+                armarPanelPendientesCierre(), armarPanelHistoricoCierre());
+        split.setResizeWeight(0.6);
+        split.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
+        split.setOpaque(false);
+        panel.add(split, BorderLayout.CENTER);
+
+        return panel;
+    }
+
+    private JComponent armarPanelPendientesCierre() {
+        JPanel panel = new JPanel(new BorderLayout(0, 8));
+        panel.setOpaque(false);
+
+        estilizarTabla(tablaPendientesCierre);
+        tablaPendientesCierre.getColumnModel().getColumn(0).setMaxWidth(30);
+        panel.add(new JScrollPane(tablaPendientesCierre), BorderLayout.CENTER);
+
+        JPanel pie = new JPanel(new BorderLayout(0, 8));
+        pie.setOpaque(false);
+        pie.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
+
+        JPanel filaDescripcion = new JPanel(new BorderLayout(0, 4));
+        filaDescripcion.setOpaque(false);
+        JLabel labelDescripcion = new JLabel("DESCRIPCION DEL CIERRE (opcional)");
+        labelDescripcion.setForeground(Paleta.GRIS_TEXTO);
+        labelDescripcion.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        campoDescripcionCierre.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        campoDescripcionCierre.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Paleta.GRIS_BORDE),
+                BorderFactory.createEmptyBorder(6, 10, 6, 10)));
+        filaDescripcion.add(labelDescripcion, BorderLayout.NORTH);
+        filaDescripcion.add(campoDescripcionCierre, BorderLayout.CENTER);
+        pie.add(filaDescripcion, BorderLayout.NORTH);
+
+        JPanel filaBoton = new JPanel(new BorderLayout());
+        filaBoton.setOpaque(false);
+        filaBoton.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
+        labelErrorCierre.setForeground(Paleta.ROJO_ERROR);
+        labelErrorCierre.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        filaBoton.add(labelErrorCierre, BorderLayout.WEST);
+        botonCerrarMes.addActionListener(e -> onCerrarMes());
+        filaBoton.add(botonCerrarMes, BorderLayout.EAST);
+        pie.add(filaBoton, BorderLayout.SOUTH);
+
+        panel.add(pie, BorderLayout.SOUTH);
+        return panel;
+    }
+
+    private JComponent armarPanelHistoricoCierre() {
+        JPanel panel = new JPanel(new BorderLayout(0, 8));
+        panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 0));
+
+        JLabel titulo = new JLabel("Historico de cierres");
+        titulo.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        titulo.setForeground(Paleta.AZUL_OSCURO);
+        panel.add(titulo, BorderLayout.NORTH);
+
+        estilizarTabla(tablaHistoricoCierres);
+        tablaHistoricoCierres.setPreferredScrollableViewportSize(new Dimension(320, 140));
+        ListSelectionListener alSeleccionar = e -> {
+            if (!e.getValueIsAdjusting()) {
+                onVerHistoricoCierre();
+            }
+        };
+        tablaHistoricoCierres.getSelectionModel().addListSelectionListener(alSeleccionar);
+
+        JPanel centro = new JPanel(new BorderLayout(0, 8));
+        centro.setOpaque(false);
+        centro.add(new JScrollPane(tablaHistoricoCierres), BorderLayout.NORTH);
+
+        estilizarAreaReporte(areaReporteCierre);
+        centro.add(new JScrollPane(areaReporteCierre), BorderLayout.CENTER);
+        panel.add(centro, BorderLayout.CENTER);
+
+        return panel;
+    }
+
+    private void estilizarAreaReporte(JTextArea area) {
+        area.setEditable(false);
+        area.setFont(new Font("Consolas", Font.PLAIN, 13));
+        area.setBackground(Paleta.BLANCO);
+        area.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Paleta.GRIS_BORDE),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)));
     }
 
     private void estilizarTabla(JTable tabla) {
@@ -446,6 +576,178 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         }.execute();
     }
 
+    // ---------------------------------------------------------------- Carga de datos (Cierre Mensual)
+
+    private void cargarPendientesCierre() {
+        labelErrorCierre.setText(" ");
+        setHabilitado(false);
+        new SwingWorker<List<MovimientoFinanciero>, Void>() {
+            Exception error;
+
+            @Override
+            protected List<MovimientoFinanciero> doInBackground() {
+                try {
+                    return movimientoFinancieroController.listarPendientesDeCierre();
+                } catch (Exception e) {
+                    error = e;
+                    return List.of();
+                }
+            }
+
+            @Override
+            protected void done() {
+                setHabilitado(true);
+                List<MovimientoFinanciero> resultado;
+                try {
+                    resultado = get();
+                } catch (Exception e) {
+                    error = e;
+                    resultado = List.of();
+                }
+                if (error != null) {
+                    mostrarErrorConexion();
+                    return;
+                }
+                modeloPendientesCierre.setDatos(resultado);
+            }
+        }.execute();
+    }
+
+    private void cargarHistoricoCierres() {
+        setHabilitado(false);
+        new SwingWorker<List<CierreMensual>, Void>() {
+            Exception error;
+
+            @Override
+            protected List<CierreMensual> doInBackground() {
+                try {
+                    return cierreMensualController.listarHistorico();
+                } catch (Exception e) {
+                    error = e;
+                    return List.of();
+                }
+            }
+
+            @Override
+            protected void done() {
+                setHabilitado(true);
+                List<CierreMensual> resultado;
+                try {
+                    resultado = get();
+                } catch (Exception e) {
+                    error = e;
+                    resultado = List.of();
+                }
+                if (error != null) {
+                    mostrarErrorConexion();
+                    return;
+                }
+                modeloHistoricoCierres.setDatos(resultado);
+            }
+        }.execute();
+    }
+
+    private void onVerHistoricoCierre() {
+        int filaSeleccionada = tablaHistoricoCierres.getSelectedRow();
+        if (filaSeleccionada < 0) {
+            return;
+        }
+        CierreMensual seleccionado = modeloHistoricoCierres.getCierre(
+                tablaHistoricoCierres.convertRowIndexToModel(filaSeleccionada));
+        areaReporteCierre.setText(formatearReporteCierre(seleccionado));
+    }
+
+    private void onCerrarMes() {
+        labelErrorCierre.setText(" ");
+        List<MovimientoFinanciero> seleccionados = modeloPendientesCierre.getSeleccionados();
+        if (seleccionados.isEmpty()) {
+            labelErrorCierre.setText("Marque al menos un movimiento para cerrar el mes.");
+            return;
+        }
+
+        BigDecimal entradas = BigDecimal.ZERO;
+        BigDecimal salidas = BigDecimal.ZERO;
+        for (MovimientoFinanciero m : seleccionados) {
+            if (m.getTipo() == TipoMovimientoFinanciero.ENTRADA) {
+                entradas = entradas.add(m.getValor());
+            } else {
+                salidas = salidas.add(m.getValor());
+            }
+        }
+        BigDecimal ganancia = entradas.subtract(salidas);
+
+        int opcion = JOptionPane.showConfirmDialog(this,
+                "Cerrar el mes con " + seleccionados.size() + " movimiento(s) marcado(s)?\n\n"
+                        + "Total entradas: Gs. " + FORMATO_SALDO.format(entradas) + "\n"
+                        + "Total gastos:   Gs. " + FORMATO_SALDO.format(salidas) + "\n"
+                        + "GANANCIA:       Gs. " + FORMATO_SALDO.format(ganancia) + "\n\n"
+                        + "Esto va a repartir la ganancia 50/50 entre los socios y no se puede deshacer.",
+                "Confirmar cierre mensual", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (opcion != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        String descripcion = campoDescripcionCierre.getText().trim();
+
+        setHabilitado(false);
+        new SwingWorker<CierreMensual, Void>() {
+            RuntimeException error;
+
+            @Override
+            protected CierreMensual doInBackground() {
+                try {
+                    return cierreMensualController.cerrar(seleccionados, descripcion.isBlank() ? null : descripcion);
+                } catch (RuntimeException e) {
+                    error = e;
+                    return null;
+                }
+            }
+
+            @Override
+            protected void done() {
+                setHabilitado(true);
+                CierreMensual resultado = null;
+                try {
+                    resultado = get();
+                } catch (Exception e) {
+                    error = new RuntimeException(e.getMessage(), e);
+                }
+                if (error != null || resultado == null) {
+                    JOptionPane.showMessageDialog(FinancieroPanel.this,
+                            error != null ? error.getMessage() : "No fue posible cerrar el mes.",
+                            "No fue posible cerrar", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                campoDescripcionCierre.setText("");
+                areaReporteCierre.setText(formatearReporteCierre(resultado));
+                cargarPendientesCierre();
+                cargarHistoricoCierres();
+                buscarMovimientos();
+            }
+        }.execute();
+    }
+
+    private String formatearReporteCierre(CierreMensual cierre) {
+        StringBuilder texto = new StringBuilder();
+        texto.append("Fecha del cierre: ").append(cierre.getFechaCierre().format(FORMATO_FECHA)).append('\n');
+        if (cierre.getDescripcion() != null && !cierre.getDescripcion().isBlank()) {
+            texto.append("Descripcion:      ").append(cierre.getDescripcion()).append('\n');
+        }
+        texto.append('\n');
+        texto.append("Total entradas:  Gs. ").append(FORMATO_SALDO.format(cierre.getTotalEntradas())).append('\n');
+        texto.append("Total gastos:    Gs. ").append(FORMATO_SALDO.format(cierre.getTotalSalidas())).append('\n');
+        texto.append("GANANCIA:        Gs. ").append(FORMATO_SALDO.format(cierre.getGananciaTotal())).append("\n\n");
+
+        texto.append("Reparto entre socios:\n");
+        for (CierreSocioDetalle detalle : cierre.getDetalles()) {
+            texto.append("  ").append(detalle.getSocio().getNombre()).append('\n');
+            texto.append("    Parte de la ganancia: Gs. ").append(FORMATO_SALDO.format(detalle.getParteGanancia())).append('\n');
+            texto.append("    Ya retiro:            Gs. ").append(FORMATO_SALDO.format(detalle.getYaRetirado())).append('\n');
+            texto.append("    A recibir:            Gs. ").append(FORMATO_SALDO.format(detalle.getValorARecibir())).append('\n');
+        }
+        return texto.toString();
+    }
+
     private void setHabilitado(boolean habilitado) {
         setCursor(habilitado ? Cursor.getDefaultCursor() : Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
     }
@@ -623,6 +925,153 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
                     return cheque.getFechaVencimiento() == null ? "" : cheque.getFechaVencimiento().format(FORMATO_FECHA_TABLA);
                 case 5:
                     return FORMATO_VALOR.format(cheque.getValor() == null ? BigDecimal.ZERO : cheque.getValor());
+                default:
+                    return "";
+            }
+        }
+    }
+
+    /**
+     * Tabla de la pestaña "Cierre Mensual": los movimientos que todavia no
+     * entraron en ningun cierre, con una columna de checkbox (columna 0)
+     * para elegir cuales entran en el cierre de ahora. Por defecto todos
+     * quedan marcados -- el usuario desmarca los que quiere dejar para un
+     * cierre siguiente.
+     */
+    private static class TablaPendientesCierreModel extends AbstractTableModel {
+        private static final String[] COLUMNAS = {"", "Fecha", "Tipo", "Categoria", "Descripcion", "Valor (Gs.)"};
+        private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
+        private static final DateTimeFormatter FORMATO_FECHA_TABLA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+        private List<MovimientoFinanciero> movimientos = List.of();
+        private final Set<Long> marcados = new HashSet<>();
+
+        void setDatos(List<MovimientoFinanciero> movimientos) {
+            this.movimientos = movimientos;
+            marcados.clear();
+            for (MovimientoFinanciero m : movimientos) {
+                marcados.add(m.getId());
+            }
+            fireTableDataChanged();
+        }
+
+        List<MovimientoFinanciero> getSeleccionados() {
+            List<MovimientoFinanciero> resultado = new ArrayList<>();
+            for (MovimientoFinanciero m : movimientos) {
+                if (marcados.contains(m.getId())) {
+                    resultado.add(m);
+                }
+            }
+            return resultado;
+        }
+
+        @Override
+        public int getRowCount() {
+            return movimientos.size();
+        }
+
+        @Override
+        public int getColumnCount() {
+            return COLUMNAS.length;
+        }
+
+        @Override
+        public String getColumnName(int columna) {
+            return COLUMNAS[columna];
+        }
+
+        @Override
+        public Class<?> getColumnClass(int columna) {
+            return columna == 0 ? Boolean.class : String.class;
+        }
+
+        @Override
+        public boolean isCellEditable(int fila, int columna) {
+            return columna == 0;
+        }
+
+        @Override
+        public void setValueAt(Object valor, int fila, int columna) {
+            if (columna != 0) {
+                return;
+            }
+            Long id = movimientos.get(fila).getId();
+            if (Boolean.TRUE.equals(valor)) {
+                marcados.add(id);
+            } else {
+                marcados.remove(id);
+            }
+            fireTableCellUpdated(fila, columna);
+        }
+
+        @Override
+        public Object getValueAt(int fila, int columna) {
+            MovimientoFinanciero movimiento = movimientos.get(fila);
+            switch (columna) {
+                case 0:
+                    return marcados.contains(movimiento.getId());
+                case 1:
+                    return movimiento.getFecha() == null ? "" : movimiento.getFecha().format(FORMATO_FECHA_TABLA);
+                case 2:
+                    return movimiento.getTipo() == TipoMovimientoFinanciero.ENTRADA ? "Ingreso" : "Egreso";
+                case 3:
+                    return movimiento.getCategoria() == null ? "" : movimiento.getCategoria().name().replace("_", " ");
+                case 4:
+                    return movimiento.getDescripcion() == null ? "" : movimiento.getDescripcion();
+                case 5:
+                    String valorFormateado = FORMATO_VALOR.format(
+                            movimiento.getValor() == null ? BigDecimal.ZERO : movimiento.getValor());
+                    return movimiento.getTipo() == TipoMovimientoFinanciero.SALIDA
+                            ? "-" + valorFormateado
+                            : valorFormateado;
+                default:
+                    return "";
+            }
+        }
+    }
+
+    /** Tabla del historico de cierres ya hechos, en la pestaña "Cierre Mensual". */
+    private static class TablaHistoricoCierresModel extends AbstractTableModel {
+        private static final String[] COLUMNAS = {"Fecha", "Descripcion", "Ganancia (Gs.)"};
+        private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
+        private static final DateTimeFormatter FORMATO_FECHA_TABLA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+        private List<CierreMensual> cierres = List.of();
+
+        void setDatos(List<CierreMensual> cierres) {
+            this.cierres = cierres;
+            fireTableDataChanged();
+        }
+
+        CierreMensual getCierre(int fila) {
+            return cierres.get(fila);
+        }
+
+        @Override
+        public int getRowCount() {
+            return cierres.size();
+        }
+
+        @Override
+        public int getColumnCount() {
+            return COLUMNAS.length;
+        }
+
+        @Override
+        public String getColumnName(int columna) {
+            return COLUMNAS[columna];
+        }
+
+        @Override
+        public Object getValueAt(int fila, int columna) {
+            CierreMensual cierre = cierres.get(fila);
+            switch (columna) {
+                case 0:
+                    return cierre.getFechaCierre() == null ? "" : cierre.getFechaCierre().format(FORMATO_FECHA_TABLA);
+                case 1:
+                    return cierre.getDescripcion() == null ? "" : cierre.getDescripcion();
+                case 2:
+                    return FORMATO_VALOR.format(cierre.getGananciaTotal() == null ? BigDecimal.ZERO : cierre.getGananciaTotal());
                 default:
                     return "";
             }

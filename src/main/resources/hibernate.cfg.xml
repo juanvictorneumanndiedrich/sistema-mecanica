@@ -32,6 +32,8 @@
 		<mapping class="com.mecanica.model.RetiroSocio"/>
 		<mapping class="com.mecanica.model.MovimientoFinanciero"/>
 		<mapping class="com.mecanica.model.ChequePreDatado"/>
+		<mapping class="com.mecanica.model.CierreMensual"/>
+		<mapping class="com.mecanica.model.CierreSocioDetalle"/>
 
 	</session-factory>
 </hibernate-configuration>

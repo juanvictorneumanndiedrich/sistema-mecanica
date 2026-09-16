@@ -17,6 +17,12 @@ import java.time.LocalDate;
  * trata como gasto -- solo se descuenta de la parte de ese socio en la
  * liquidacion (division de ganancia 50/50), controlada solo con la entidad
  * RetiroSocio. Por eso aca no hay una referencia a Socio.
+ *
+ * El campo cierre marca a que CierreMensual entro este movimiento (null =
+ * todavia pendiente, no entro en ningun cierre). El usuario elige con
+ * checkbox, en la pestaña "Cierre Mensual" de Financiero, cuales movimientos
+ * entran en cada cierre -- no es necesariamente por fecha calendario, para
+ * poder dejar algo para el cierre siguiente o traer algo de uno anterior.
  */
 @Entity
 @Table(name = "movimiento_financiero")
@@ -56,6 +62,10 @@ public class MovimientoFinanciero {
     @ManyToOne
     @JoinColumn(name = "empleado_id")
     private Empleado empleado;
+
+    @ManyToOne
+    @JoinColumn(name = "cierre_id")
+    private CierreMensual cierre;
 
     public MovimientoFinanciero() {
     }
@@ -130,5 +140,13 @@ public class MovimientoFinanciero {
 
     public void setEmpleado(Empleado empleado) {
         this.empleado = empleado;
+    }
+
+    public CierreMensual getCierre() {
+        return cierre;
+    }
+
+    public void setCierre(CierreMensual cierre) {
+        this.cierre = cierre;
     }
 }

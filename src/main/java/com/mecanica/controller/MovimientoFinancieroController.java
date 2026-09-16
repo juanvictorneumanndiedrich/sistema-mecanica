@@ -43,6 +43,11 @@ public class MovimientoFinancieroController {
         return movimentoFinanceiroDAO.listarPorCategoria(categoria);
     }
 
+    /** Movimientos que todavia no entraron en ningun cierre mensual. */
+    public List<MovimientoFinanciero> listarPendientesDeCierre() {
+        return movimentoFinanceiroDAO.listarPendientesDeCierre();
+    }
+
     /** Saldo del periodo: total de ENTRADA menos total de SALIDA. */
     public BigDecimal calcularSaldoPeriodo(LocalDate inicio, LocalDate fin) {
         BigDecimal entradas = BigDecimal.ZERO;

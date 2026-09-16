@@ -8,6 +8,13 @@ import java.time.LocalDate;
  * Retiro de ganancia hecho por un socio. La division entre los 2 socios es
  * siempre 50%/50% -- esa regla se aplica en el Controller al calcular cuanto
  * puede retirar cada socio, y no es un dato guardado por retiro.
+ *
+ * El campo cierre marca a que CierreMensual entro este retiro (null =
+ * todavia pendiente, se descuenta en el proximo cierre que se haga). Se
+ * marca en CierreMensualController.cerrar(), tomando SIEMPRE todos los
+ * retiros todavia no vinculados a un cierre (sin usar un rango de fechas),
+ * para evitar el mismo problema que tenia el retiro de empleado antes de la
+ * correccion: un mismo retiro descontado dos veces en dos cierres distintos.
  */
 @Entity
 @Table(name = "retiro_socio")
@@ -29,6 +36,10 @@ public class RetiroSocio {
 
     @Column(length = 200)
     private String observacion;
+
+    @ManyToOne
+    @JoinColumn(name = "cierre_id")
+    private CierreMensual cierre;
 
     public RetiroSocio() {
     }
@@ -71,5 +82,13 @@ public class RetiroSocio {
 
     public void setObservacion(String observacion) {
         this.observacion = observacion;
+    }
+
+    public CierreMensual getCierre() {
+        return cierre;
+    }
+
+    public void setCierre(CierreMensual cierre) {
+        this.cierre = cierre;
     }
 }
