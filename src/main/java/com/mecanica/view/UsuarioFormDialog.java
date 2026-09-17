@@ -69,7 +69,10 @@ public class UsuarioFormDialog extends JDialog {
     }
 
     private void armarPantalla() {
-        setSize(520, 760);
+        // La lista de permisos es larga: la ventana nunca puede pasar del alto de la
+        // pantalla (en 1366x768 los botones quedaban debajo de la barra de tareas).
+        int altoDisponible = Toolkit.getDefaultToolkit().getScreenSize().height - 80;
+        setSize(520, Math.min(760, altoDisponible));
         setResizable(true);
         setLayout(new BorderLayout());
 
@@ -120,11 +123,10 @@ public class UsuarioFormDialog extends JDialog {
             }
         }
 
+        // El error y los botones quedan FUERA del area que se desplaza, asi GUARDAR
+        // y CANCELAR estan siempre visibles por mas larga que sea la lista de permisos.
         labelError.setForeground(Paleta.ROJO_ERROR);
         labelError.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        gbc.gridy = fila++;
-        gbc.insets = new Insets(12, 0, 0, 0);
-        formulario.add(labelError, gbc);
 
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         botones.setOpaque(false);
@@ -134,12 +136,19 @@ public class UsuarioFormDialog extends JDialog {
         botonGuardar.addActionListener(e -> onGuardar());
         botones.add(botonCancelar);
         botones.add(botonGuardar);
-        gbc.gridy = fila;
-        gbc.insets = new Insets(16, 0, 0, 0);
-        formulario.add(botones, gbc);
+
+        JPanel pie = new JPanel(new BorderLayout(0, 8));
+        pie.setBackground(Paleta.GRIS_FONDO);
+        pie.setBorder(BorderFactory.createEmptyBorder(12, 28, 16, 28));
+        pie.add(labelError, BorderLayout.NORTH);
+        pie.add(botones, BorderLayout.SOUTH);
 
         getRootPane().setDefaultButton(botonGuardar);
-        add(new JScrollPane(formulario), BorderLayout.CENTER);
+        JScrollPane scroll = new JScrollPane(formulario);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        add(scroll, BorderLayout.CENTER);
+        add(pie, BorderLayout.SOUTH);
         setLocationRelativeTo(getOwner());
     }
 

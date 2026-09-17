@@ -6,6 +6,7 @@ import com.mecanica.enums.Permiso;
 import com.mecanica.model.Cliente;
 import com.mecanica.model.Maquinario;
 import com.mecanica.model.OrdenDeServicio;
+import com.mecanica.util.Errores;
 import com.mecanica.util.HibernateUtil;
 import com.mecanica.util.Sesion;
 import org.hibernate.Session;
@@ -62,7 +63,8 @@ public class OrdenDeServicioController {
         }
 
         Transaction tx = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        try {
             tx = session.beginTransaction();
 
             OrdenDeServicio osGerenciada = session.get(OrdenDeServicio.class, os.getId());
@@ -79,10 +81,10 @@ public class OrdenDeServicioController {
                     + clienteGerenciado.getNombre() + " - " + AuditoriaController.gs(osGerenciada.getValorTotal()));
             return osGerenciada;
         } catch (RuntimeException e) {
-            if (tx != null && tx.isActive()) {
-                tx.rollback();
-            }
-            throw e;
+            Errores.revertir(tx);
+            throw Errores.traducir(e);
+        } finally {
+            session.close();
         }
     }
 

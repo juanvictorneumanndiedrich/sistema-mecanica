@@ -6,6 +6,7 @@ import com.mecanica.enums.Permiso;
 import com.mecanica.enums.TipoMovimientoFinanciero;
 import com.mecanica.model.Cliente;
 import com.mecanica.model.MovimientoFinanciero;
+import com.mecanica.util.Errores;
 import com.mecanica.util.HibernateUtil;
 import com.mecanica.util.Sesion;
 import org.hibernate.Session;
@@ -91,14 +92,16 @@ public class ClienteController {
         }
 
         Transaction tx = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        try {
             tx = session.beginTransaction();
 
             Cliente clienteGerenciado = session.get(Cliente.class, cliente.getId());
             BigDecimal saldoAntes = clienteGerenciado.getSaldo();
-            if (descuento.compareTo(saldoAntes) > 0) {
+            BigDecimal deuda = saldoAntes.max(BigDecimal.ZERO);
+            if (descuento.compareTo(deuda) > 0) {
                 throw new IllegalArgumentException(
-                        "El descuento no puede ser mayor que el saldo del cliente (Gs. " + saldoAntes + ").");
+                        "El descuento no puede ser mayor que la deuda del cliente (Gs. " + deuda + ").");
             }
             clienteGerenciado.setSaldo(saldoAntes.subtract(valorPagado).subtract(descuento));
             session.merge(clienteGerenciado);
@@ -124,10 +127,10 @@ public class ClienteController {
                     + AuditoriaController.gs(valorPagado)
                     + (descuento.compareTo(BigDecimal.ZERO) > 0 ? " + descuento " + AuditoriaController.gs(descuento) : ""));
         } catch (RuntimeException e) {
-            if (tx != null && tx.isActive()) {
-                tx.rollback();
-            }
-            throw e;
+            Errores.revertir(tx);
+            throw Errores.traducir(e);
+        } finally {
+            session.close();
         }
     }
 
@@ -147,7 +150,8 @@ public class ClienteController {
         }
 
         Transaction tx = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        try {
             tx = session.beginTransaction();
 
             Cliente clienteGerenciado = session.get(Cliente.class, cliente.getId());
@@ -175,10 +179,10 @@ public class ClienteController {
             auditoria.registrar("SALDO RETIRADO (CLIENTE)",
                     clienteGerenciado.getNombre() + " - " + AuditoriaController.gs(valor));
         } catch (RuntimeException e) {
-            if (tx != null && tx.isActive()) {
-                tx.rollback();
-            }
-            throw e;
+            Errores.revertir(tx);
+            throw Errores.traducir(e);
+        } finally {
+            session.close();
         }
     }
 

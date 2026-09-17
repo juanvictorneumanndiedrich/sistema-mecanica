@@ -1,5 +1,6 @@
 package com.mecanica.dao;
 
+import com.mecanica.util.Errores;
 import com.mecanica.util.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
@@ -38,7 +39,8 @@ public abstract class AbstractGenericDAO<T, ID> implements GenericDAO<T, ID> {
     @Override
     public T guardar(T entidad) {
         Transaction tx = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        try {
             tx = session.beginTransaction();
             // merge cubre tanto la insercion (entidad nueva, id nulo) como
             // la actualizacion (entidad ya existente) en un solo metodo.
@@ -46,10 +48,10 @@ public abstract class AbstractGenericDAO<T, ID> implements GenericDAO<T, ID> {
             tx.commit();
             return entidadGuardada;
         } catch (RuntimeException e) {
-            if (tx != null && tx.isActive()) {
-                tx.rollback();
-            }
-            throw e;
+            Errores.revertir(tx);
+            throw Errores.traducir(e);
+        } finally {
+            session.close();
         }
     }
 
@@ -72,16 +74,30 @@ public abstract class AbstractGenericDAO<T, ID> implements GenericDAO<T, ID> {
     @Override
     public void eliminar(T entidad) {
         Transaction tx = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        try {
             tx = session.beginTransaction();
-            T gestionada = session.contains(entidad) ? entidad : session.merge(entidad);
+            // Importante: se busca la entidad por id en vez de hacer merge. Con merge,
+            // Hibernate trae de arrastre al "padre" (por ejemplo el Cliente del Maquinario)
+            // con su lista en cascada, y termina cancelando el borrado sin avisar.
+            T gestionada = session.contains(entidad) ? entidad : porId(session, entidad);
+            if (gestionada == null) {
+                tx.commit();
+                return;
+            }
             session.remove(gestionada);
             tx.commit();
         } catch (RuntimeException e) {
-            if (tx != null && tx.isActive()) {
-                tx.rollback();
-            }
-            throw e;
+            Errores.revertir(tx);
+            throw Errores.traducir(e);
+        } finally {
+            session.close();
         }
+    }
+
+    /** Recarga la entidad dentro de la sesion a partir de su id (null si ya no existe). */
+    private T porId(Session session, T entidad) {
+        Object id = HibernateUtil.getSessionFactory().getPersistenceUnitUtil().getIdentifier(entidad);
+        return id == null ? null : session.get(claseEntidad, id);
     }
 }

@@ -15,26 +15,38 @@ import org.hibernate.cfg.Configuration;
  */
 public final class HibernateUtil {
 
-    private static final SessionFactory sessionFactory = buildSessionFactory();
+    private static volatile SessionFactory sessionFactory;
 
     private HibernateUtil() {
         // clase utilitaria: no debe ser instanciada
     }
 
-    private static SessionFactory buildSessionFactory() {
-        try {
-            // configure() busca el hibernate.cfg.xml en el classpath
-            return new Configuration().configure().buildSessionFactory();
-        } catch (Throwable ex) {
-            throw new ExceptionInInitializerError("Error al crear la SessionFactory: " + ex);
+    /**
+     * Devuelve la SessionFactory, creandola en el primer uso.
+     *
+     * <p>Se crea aca (y no en un campo estatico final) a proposito: si el sistema
+     * abre antes de que el PostgreSQL termine de arrancar, el primer intento falla
+     * pero el siguiente vuelve a intentar. Con el campo estatico, la clase quedaba
+     * "quemada" en la JVM y el sistema solo conectaba cerrando y abriendo el programa.
+     */
+    public static synchronized SessionFactory getSessionFactory() {
+        if (sessionFactory == null || !sessionFactory.isOpen()) {
+            try {
+                // configure() busca el hibernate.cfg.xml en el classpath
+                sessionFactory = new Configuration().configure().buildSessionFactory();
+            } catch (Throwable ex) {
+                sessionFactory = null;
+                throw new IllegalStateException("No fue posible conectar a la base de datos. "
+                        + "Verifique que el PostgreSQL este encendido.", ex);
+            }
         }
-    }
-
-    public static SessionFactory getSessionFactory() {
         return sessionFactory;
     }
 
-    public static void shutdown() {
-        getSessionFactory().close();
+    public static synchronized void shutdown() {
+        if (sessionFactory != null) {
+            sessionFactory.close();
+            sessionFactory = null;
+        }
     }
 }

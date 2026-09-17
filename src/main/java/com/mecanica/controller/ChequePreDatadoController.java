@@ -8,6 +8,7 @@ import com.mecanica.model.Cliente;
 import com.mecanica.model.ChequePreDatado;
 import com.mecanica.model.MovimientoFinanciero;
 import com.mecanica.model.Proveedor;
+import com.mecanica.util.Errores;
 import com.mecanica.util.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
@@ -59,14 +60,16 @@ public class ChequePreDatadoController {
         BigDecimal descuento = validarDescuento(descuentoValor);
 
         Transaction tx = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        try {
             tx = session.beginTransaction();
 
             Cliente clienteGerenciado = session.get(Cliente.class, cliente.getId());
             BigDecimal saldoAntes = clienteGerenciado.getSaldo();
-            if (descuento.compareTo(saldoAntes) > 0) {
+            BigDecimal deuda = saldoAntes.max(BigDecimal.ZERO);
+            if (descuento.compareTo(deuda) > 0) {
                 throw new IllegalArgumentException(
-                        "El descuento no puede ser mayor que el saldo del cliente (Gs. " + saldoAntes + ").");
+                        "El descuento no puede ser mayor que la deuda del cliente (Gs. " + deuda + ").");
             }
             clienteGerenciado.setSaldo(saldoAntes.subtract(valorCheque).subtract(descuento));
             session.merge(clienteGerenciado);
@@ -90,10 +93,10 @@ public class ChequePreDatadoController {
             auditoria.registrar("CHEQUE PRE-DATADO DE CLIENTE", clienteGerenciado.getNombre() + " - "
                     + AuditoriaController.gs(valorCheque) + " vence " + fechaVencimiento);
         } catch (RuntimeException e) {
-            if (tx != null && tx.isActive()) {
-                tx.rollback();
-            }
-            throw e;
+            Errores.revertir(tx);
+            throw Errores.traducir(e);
+        } finally {
+            session.close();
         }
     }
 
@@ -121,14 +124,16 @@ public class ChequePreDatadoController {
         BigDecimal descuento = validarDescuento(descuentoValor);
 
         Transaction tx = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        try {
             tx = session.beginTransaction();
 
             Proveedor proveedorGerenciado = session.get(Proveedor.class, proveedor.getId());
             BigDecimal saldoAntes = proveedorGerenciado.getSaldo();
-            if (descuento.compareTo(saldoAntes) > 0) {
+            BigDecimal deuda = saldoAntes.max(BigDecimal.ZERO);
+            if (descuento.compareTo(deuda) > 0) {
                 throw new IllegalArgumentException(
-                        "El descuento no puede ser mayor que el saldo con el proveedor (Gs. " + saldoAntes + ").");
+                        "El descuento no puede ser mayor que la deuda con el proveedor (Gs. " + deuda + ").");
             }
             proveedorGerenciado.setSaldo(saldoAntes.subtract(valorCheque).subtract(descuento));
             session.merge(proveedorGerenciado);
@@ -152,10 +157,10 @@ public class ChequePreDatadoController {
             auditoria.registrar("CHEQUE PRE-DATADO A PROVEEDOR", proveedorGerenciado.getNombre() + " - "
                     + AuditoriaController.gs(valorCheque) + " vence " + fechaVencimiento);
         } catch (RuntimeException e) {
-            if (tx != null && tx.isActive()) {
-                tx.rollback();
-            }
-            throw e;
+            Errores.revertir(tx);
+            throw Errores.traducir(e);
+        } finally {
+            session.close();
         }
     }
 
@@ -172,7 +177,8 @@ public class ChequePreDatadoController {
         }
 
         Transaction tx = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        try {
             tx = session.beginTransaction();
 
             ChequePreDatado chequeGerenciado = session.get(ChequePreDatado.class, cheque.getId());
@@ -217,10 +223,10 @@ public class ChequePreDatadoController {
             tx.commit();
             auditoria.registrar("CHEQUE CONFIRMADO", descripcionBase + " - " + AuditoriaController.gs(movimiento.getValor()));
         } catch (RuntimeException e) {
-            if (tx != null && tx.isActive()) {
-                tx.rollback();
-            }
-            throw e;
+            Errores.revertir(tx);
+            throw Errores.traducir(e);
+        } finally {
+            session.close();
         }
     }
 

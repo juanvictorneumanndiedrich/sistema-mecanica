@@ -9,6 +9,7 @@ import com.mecanica.enums.TipoMovimientoFinanciero;
 import com.mecanica.model.Empleado;
 import com.mecanica.model.MovimientoFinanciero;
 import com.mecanica.model.RetiroEmpleado;
+import com.mecanica.util.Errores;
 import com.mecanica.util.HibernateUtil;
 import com.mecanica.util.Sesion;
 import org.hibernate.Session;
@@ -109,7 +110,8 @@ public class EmpleadoController {
         LocalDate fechaPago = LocalDate.now();
 
         Transaction tx = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        try {
             tx = session.beginTransaction();
 
             Query<RetiroEmpleado> query = session.createQuery(
@@ -156,10 +158,10 @@ public class EmpleadoController {
             resultado.pagoSalario = movimiento;
             return resultado;
         } catch (RuntimeException e) {
-            if (tx != null && tx.isActive()) {
-                tx.rollback();
-            }
-            throw e;
+            Errores.revertir(tx);
+            throw Errores.traducir(e);
+        } finally {
+            session.close();
         }
     }
 

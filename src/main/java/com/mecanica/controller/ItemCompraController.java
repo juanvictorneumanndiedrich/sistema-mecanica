@@ -4,6 +4,7 @@ import com.mecanica.dao.ItemCompraDAO;
 import com.mecanica.model.Compra;
 import com.mecanica.model.ItemCompra;
 import com.mecanica.model.Proveedor;
+import com.mecanica.util.Errores;
 import com.mecanica.util.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
@@ -37,7 +38,8 @@ public class ItemCompraController {
         BigDecimal valorItem = cantidad.multiply(valorUnitario);
 
         Transaction tx = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        try {
             tx = session.beginTransaction();
 
             Compra compraGerenciada = session.get(Compra.class, compra.getId());
@@ -55,10 +57,10 @@ public class ItemCompraController {
             tx.commit();
             return item;
         } catch (RuntimeException e) {
-            if (tx != null && tx.isActive()) {
-                tx.rollback();
-            }
-            throw e;
+            Errores.revertir(tx);
+            throw Errores.traducir(e);
+        } finally {
+            session.close();
         }
     }
 
@@ -66,7 +68,8 @@ public class ItemCompraController {
         compraController.verificarEditable(item.getCompra());
 
         Transaction tx = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        try {
             tx = session.beginTransaction();
 
             ItemCompra itemGerenciado = session.get(ItemCompra.class, item.getId());
@@ -84,10 +87,10 @@ public class ItemCompraController {
 
             tx.commit();
         } catch (RuntimeException e) {
-            if (tx != null && tx.isActive()) {
-                tx.rollback();
-            }
-            throw e;
+            Errores.revertir(tx);
+            throw Errores.traducir(e);
+        } finally {
+            session.close();
         }
     }
 

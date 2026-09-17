@@ -9,6 +9,7 @@ import com.mecanica.model.CierreSocioDetalle;
 import com.mecanica.model.MovimientoFinanciero;
 import com.mecanica.model.RetiroSocio;
 import com.mecanica.model.Socio;
+import com.mecanica.util.Errores;
 import com.mecanica.util.HibernateUtil;
 import com.mecanica.util.Sesion;
 import org.hibernate.Session;
@@ -69,7 +70,8 @@ public class CierreMensualController {
         BigDecimal parte = gananciaTotal.divide(BigDecimal.valueOf(socios.size()), 2, RoundingMode.HALF_UP);
 
         Transaction tx = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        try {
             tx = session.beginTransaction();
 
             CierreMensual cierre = new CierreMensual();
@@ -116,10 +118,10 @@ public class CierreMensualController {
                     + seleccionados.size() + " movimientos - ganancia " + AuditoriaController.gs(gananciaTotal));
             return cierre;
         } catch (RuntimeException e) {
-            if (tx != null && tx.isActive()) {
-                tx.rollback();
-            }
-            throw e;
+            Errores.revertir(tx);
+            throw Errores.traducir(e);
+        } finally {
+            session.close();
         }
     }
 }

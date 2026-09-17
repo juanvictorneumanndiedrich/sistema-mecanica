@@ -5,6 +5,7 @@ import com.mecanica.dao.ProveedorDAO;
 import com.mecanica.enums.Permiso;
 import com.mecanica.model.Compra;
 import com.mecanica.model.Proveedor;
+import com.mecanica.util.Errores;
 import com.mecanica.util.HibernateUtil;
 import com.mecanica.util.Sesion;
 import org.hibernate.Session;
@@ -67,7 +68,8 @@ public class CompraController {
         verificarEditable(compra);
 
         Transaction tx = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        try {
             tx = session.beginTransaction();
 
             Compra compraGerenciada = session.get(Compra.class, compra.getId());
@@ -90,10 +92,10 @@ public class CompraController {
             auditoria.registrar("NOTA DE COMPRA ELIMINADA", "Nota Nº " + compraGerenciada.getNumero() + " de "
                     + proveedorGerenciado.getNombre() + " - " + AuditoriaController.gs(valorNota));
         } catch (RuntimeException e) {
-            if (tx != null && tx.isActive()) {
-                tx.rollback();
-            }
-            throw e;
+            Errores.revertir(tx);
+            throw Errores.traducir(e);
+        } finally {
+            session.close();
         }
     }
 
