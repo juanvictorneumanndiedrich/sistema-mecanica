@@ -123,8 +123,8 @@ public class ClienteFormDialog extends JDialog {
             labelError.setText("Debe ingresar el nombre del cliente.");
             return;
         }
-        if (!Validaciones.soloLetras(nombre)) {
-            labelError.setText("El nombre solo puede contener letras.");
+        if (!Validaciones.nombreORazonSocial(nombre)) {
+            labelError.setText("El nombre no puede contener simbolos (se permite punto, guion y apostrofe).");
             return;
         }
 

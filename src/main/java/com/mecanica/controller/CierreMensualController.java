@@ -70,7 +70,7 @@ public class CierreMensualController {
         BigDecimal parte = gananciaTotal.divide(BigDecimal.valueOf(socios.size()), 2, RoundingMode.HALF_UP);
 
         Transaction tx = null;
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = HibernateUtil.abrirSesion();
         try {
             tx = session.beginTransaction();
 

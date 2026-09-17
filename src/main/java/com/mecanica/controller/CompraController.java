@@ -68,7 +68,7 @@ public class CompraController {
         verificarEditable(compra);
 
         Transaction tx = null;
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = HibernateUtil.abrirSesion();
         try {
             tx = session.beginTransaction();
 

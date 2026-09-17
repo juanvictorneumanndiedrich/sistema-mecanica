@@ -110,7 +110,7 @@ public class EmpleadoController {
         LocalDate fechaPago = LocalDate.now();
 
         Transaction tx = null;
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = HibernateUtil.abrirSesion();
         try {
             tx = session.beginTransaction();
 

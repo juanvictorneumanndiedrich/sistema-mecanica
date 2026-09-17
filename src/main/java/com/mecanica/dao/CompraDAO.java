@@ -15,7 +15,7 @@ public class CompraDAO extends AbstractGenericDAO<Compra, Long> {
     }
 
     public List<Compra> listarPorFornecedor(Proveedor proveedor) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "FROM Compra c WHERE c.proveedor = :proveedor ORDER BY c.numero DESC";
             Query<Compra> query = session.createQuery(hql, Compra.class);
             query.setParameter("proveedor", proveedor);
@@ -29,7 +29,7 @@ public class CompraDAO extends AbstractGenericDAO<Compra, Long> {
      * ninguna Compra -- mismo patron de OrdenDeServicioDAO.buscarMayorNumero.
      */
     public Long buscarMayorNumero() {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "SELECT MAX(c.numero) FROM Compra c";
             Query<Long> query = session.createQuery(hql, Long.class);
             List<Long> resultado = query.list();

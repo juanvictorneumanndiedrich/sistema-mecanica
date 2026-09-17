@@ -92,7 +92,7 @@ public class ClienteController {
         }
 
         Transaction tx = null;
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = HibernateUtil.abrirSesion();
         try {
             tx = session.beginTransaction();
 
@@ -150,7 +150,7 @@ public class ClienteController {
         }
 
         Transaction tx = null;
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = HibernateUtil.abrirSesion();
         try {
             tx = session.beginTransaction();
 

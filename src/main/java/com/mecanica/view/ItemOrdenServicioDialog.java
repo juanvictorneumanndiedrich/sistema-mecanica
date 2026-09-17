@@ -35,7 +35,7 @@ import java.util.List;
  */
 public class ItemOrdenServicioDialog extends JDialog {
 
-    private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
+    private static final DecimalFormat FORMATO_VALOR = com.mecanica.util.Moneda.nuevoFormatoValor();
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final ItemOrdenServicioController itemController = new ItemOrdenServicioController();
@@ -83,6 +83,10 @@ public class ItemOrdenServicioDialog extends JDialog {
         add(armarPanelEncabezado(), BorderLayout.NORTH);
         add(armarPanelItems(), BorderLayout.CENTER);
         add(armarPanelInferior(), BorderLayout.SOUTH);
+
+        // Enter en los campos de "nuevo item" agrega el item (no hay un solo boton de
+        // "guardar" en este dialogo: agregar es la accion mas comun al escribir y presionar Enter).
+        getRootPane().setDefaultButton(botonAgregar);
 
         setLocationRelativeTo(getOwner());
     }
@@ -494,7 +498,7 @@ public class ItemOrdenServicioDialog extends JDialog {
 
     private static class TablaItemsModel extends AbstractTableModel {
         private static final String[] COLUMNAS = {"Tipo", "Descripcion", "Cantidad", "Valor Unit. (Gs.)", "Valor Total (Gs.)"};
-        private static final DecimalFormat FORMATO_CANTIDAD = new DecimalFormat("#,##0.###");
+        private static final DecimalFormat FORMATO_CANTIDAD = com.mecanica.util.Moneda.nuevoFormatoCantidad();
 
         private List<ItemOrdenServicio> items = List.of();
 

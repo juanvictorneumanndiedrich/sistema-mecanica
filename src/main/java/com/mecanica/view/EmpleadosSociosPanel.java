@@ -52,7 +52,7 @@ import java.util.List;
 public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
 
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
+    private static final DecimalFormat FORMATO_VALOR = com.mecanica.util.Moneda.nuevoFormatoValor();
 
     private final EmpleadoController empleadoController = new EmpleadoController();
     private final SocioController socioController = new SocioController();
@@ -856,7 +856,7 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
 
     private static class TablaEmpleadosModel extends AbstractTableModel {
         private static final String[] COLUMNAS = {"Nombre", "Documento", "Cargo", "Salario Base (Gs.)", "Activo"};
-        private static final DecimalFormat FORMATO_SALARIO = new DecimalFormat("#,##0");
+        private static final DecimalFormat FORMATO_SALARIO = com.mecanica.util.Moneda.nuevoFormatoValor();
 
         private List<Empleado> empleados = List.of();
 

@@ -40,7 +40,7 @@ public enum Permiso {
     MOVIMIENTO_MANUAL("Registrar movimiento manual (ingreso / egreso)", Grupo.FINANCIERO),
 
     // ---- Acciones delicadas (valen en cualquier area que el usuario tenga)
-    ELIMINAR_REGISTROS("Eliminar clientes, maquinarios, proveedores y notas de compra", Grupo.DELICADAS),
+    ELIMINAR_REGISTROS("Eliminar clientes, maquinarios, proveedores, notas de compra y ordenes de servicio", Grupo.DELICADAS),
     CANCELAR_OS("Cancelar Ordenes de Servicio", Grupo.DELICADAS),
     RETIRAR_SALDO("Retirar saldo a favor (cliente / proveedor)", Grupo.DELICADAS);
 

@@ -18,7 +18,7 @@ public class MovimientoFinancieroDAO extends AbstractGenericDAO<MovimientoFinanc
 
     /** Se usa en la pantalla Financiero para armar el extracto de un periodo. */
     public List<MovimientoFinanciero> listarPorPeriodo(LocalDate inicio, LocalDate fin) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "FROM MovimientoFinanciero m WHERE m.fecha BETWEEN :inicio AND :fin ORDER BY m.fecha";
             Query<MovimientoFinanciero> query = session.createQuery(hql, MovimientoFinanciero.class);
             query.setParameter("inicio", inicio);
@@ -28,7 +28,7 @@ public class MovimientoFinancieroDAO extends AbstractGenericDAO<MovimientoFinanc
     }
 
     public List<MovimientoFinanciero> listarPorCategoria(CategoriaMovimientoFinanciero categoria) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "FROM MovimientoFinanciero m WHERE m.categoria = :categoria ORDER BY m.fecha DESC";
             Query<MovimientoFinanciero> query = session.createQuery(hql, MovimientoFinanciero.class);
             query.setParameter("categoria", categoria);
@@ -42,7 +42,7 @@ public class MovimientoFinancieroDAO extends AbstractGenericDAO<MovimientoFinanc
      * el usuario elige con checkbox cuales entran en el cierre de ahora.
      */
     public List<MovimientoFinanciero> listarPendientesDeCierre() {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "FROM MovimientoFinanciero m WHERE m.cierre IS NULL ORDER BY m.fecha";
             Query<MovimientoFinanciero> query = session.createQuery(hql, MovimientoFinanciero.class);
             return query.list();
@@ -51,7 +51,7 @@ public class MovimientoFinancieroDAO extends AbstractGenericDAO<MovimientoFinanc
 
     /** Pagos de salario (SALARIO_EMPLEADO) de un empleado, del mas reciente al mas antiguo. */
     public List<MovimientoFinanciero> listarSalariosPorEmpleado(Empleado empleado) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "FROM MovimientoFinanciero m WHERE m.empleado = :empleado "
                     + "AND m.categoria = :categoria ORDER BY m.fecha DESC, m.id DESC";
             Query<MovimientoFinanciero> query = session.createQuery(hql, MovimientoFinanciero.class);
@@ -63,7 +63,7 @@ public class MovimientoFinancieroDAO extends AbstractGenericDAO<MovimientoFinanc
 
     /** Cantidad de movimientos que entraron en un cierre (se muestra en el reporte del cierre). */
     public long contarPorCierre(Long cierreId) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             Query<Long> query = session.createQuery(
                     "SELECT COUNT(m) FROM MovimientoFinanciero m WHERE m.cierre.id = :id", Long.class);
             query.setParameter("id", cierreId);

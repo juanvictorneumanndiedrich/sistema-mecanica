@@ -71,18 +71,34 @@ public class LoginView extends JDialog {
     private void verificarAccesoInicial() {
         setCargando(true, "CONECTANDO...");
 
-        new SwingWorker<Boolean, Void>() {
+        new SwingWorker<String, Void>() {
             @Override
-            protected Boolean doInBackground() {
-                return usuarioController.asegurarUsuarioInicial();
+            protected String doInBackground() {
+                if (usuarioController.asegurarUsuarioInicial()) {
+                    // base recien creada: el admin ya nace con todos los permisos,
+                    // no hay nada que migrar.
+                    return "Primer acceso -- usuario: admin / contrasena: admin";
+                }
+                // base que ya tenia usuarios: si es la primera vez que corre esta
+                // version (con los 9 permisos de accion nuevos), les da a los
+                // usuarios existentes los permisos de su area, para que no pierdan
+                // de golpe accesos que ya tenian antes de la actualizacion.
+                int afectados = usuarioController.migrarPermisosDeAccionSiHaceFalta();
+                if (afectados > 0) {
+                    return "El sistema se actualizo con permisos mas detallados.\n"
+                            + afectados + " usuario(s) recibieron automaticamente los permisos de su area "
+                            + "(revise Usuarios y Permisos para ajustarlos si hace falta).";
+                }
+                return null;
             }
 
             @Override
             protected void done() {
                 setCargando(false, null);
                 try {
-                    if (get()) {
-                        mostrarAviso("Primer acceso -- usuario: admin / contrasena: admin");
+                    String aviso = get();
+                    if (aviso != null) {
+                        mostrarAviso(aviso);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();

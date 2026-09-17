@@ -66,6 +66,57 @@ public class UsuarioController {
         return true;
     }
 
+    private static final String ACCION_MIGRACION_PERMISOS = "MIGRACION DE PERMISOS (2026-09-17)";
+
+    /**
+     * Migracion de datos que corre una unica vez (deja una marca en el
+     * registro de actividad para no repetirse en cada arranque): cuando el
+     * sistema agrego estos 9 permisos de accion mas finos, el
+     * hbm2ddl.auto=update los dejo en "false" para TODOS los usuarios que ya
+     * existian -- aunque antes de que existieran estos permisos, tener el
+     * area ya alcanzaba para hacer todo lo de adentro. Sin este paso,
+     * cualquiera que actualice el sistema pierde de golpe, por ejemplo, la
+     * posibilidad de cancelar una OS o pagar un salario, hasta que alguien
+     * entre a Usuarios y Permisos y marque las casillas nuevas a mano.
+     *
+     * <p>A cada usuario que ya tenia el area correspondiente se le prenden
+     * los permisos de accion de esa area. Los 3 permisos "delicados"
+     * (eliminar registros, cancelar OS, retirar saldo) no pertenecen a
+     * ninguna area en particular -- se los prende a quien ya tenia el area
+     * de Usuarios y Permisos, el dato mas cercano a "administrador" que
+     * existia antes de esta migracion.
+     *
+     * @return la cantidad de usuarios a los que se les agrego algun permiso.
+     */
+    public int migrarPermisosDeAccionSiHaceFalta() {
+        if (auditoria.yaSeRegistro(ACCION_MIGRACION_PERMISOS)) {
+            return 0;
+        }
+        int afectados = 0;
+        for (Usuario usuario : usuarioDAO.listarTodos()) {
+            boolean cambio = false;
+            for (Permiso permiso : Permiso.values()) {
+                if (permiso.esArea() || usuario.tiene(permiso)) {
+                    continue;
+                }
+                Permiso area = permiso.area();
+                boolean deberiaTener = area != null ? usuario.tiene(area) : usuario.tiene(Permiso.USUARIOS);
+                if (deberiaTener) {
+                    usuario.setPermiso(permiso, true);
+                    cambio = true;
+                }
+            }
+            if (cambio) {
+                usuarioDAO.guardar(usuario);
+                afectados++;
+            }
+        }
+        auditoria.registrar(ACCION_MIGRACION_PERMISOS,
+                afectados + " usuario(s) recibieron automaticamente los permisos nuevos de su area, "
+                        + "segun los permisos que ya tenian antes de esta actualizacion.");
+        return afectados;
+    }
+
     /**
      * Actualiza nombre/login/permisos/activo de un usuario ya existente, sin
      * tocar la clave (para eso, ver cambiarClave).

@@ -15,7 +15,7 @@ public class ItemOrdenServicioDAO extends AbstractGenericDAO<ItemOrdenServicio, 
     }
 
     public List<ItemOrdenServicio> listarPorOrdemDeServico(OrdenDeServicio ordenDeServicio) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "FROM ItemOrdenServicio i WHERE i.ordenDeServicio = :os ORDER BY i.id";
             Query<ItemOrdenServicio> query = session.createQuery(hql, ItemOrdenServicio.class);
             query.setParameter("os", ordenDeServicio);

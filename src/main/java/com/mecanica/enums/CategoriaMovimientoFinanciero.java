@@ -24,10 +24,21 @@ package com.mecanica.enums;
  * ProveedorController.retirarSaldo.
  */
 public enum CategoriaMovimientoFinanciero {
-    PAGO_CLIENTE,
-    COMPRA_PROVEEDOR,
-    SALARIO_EMPLEADO,
-    DEVOLUCION_CLIENTE,
-    DEVOLUCION_PROVEEDOR,
-    OTRO
+    PAGO_CLIENTE("Pago de cliente"),
+    COMPRA_PROVEEDOR("Pago a proveedor"),
+    SALARIO_EMPLEADO("Salario de empleado"),
+    DEVOLUCION_CLIENTE("Devolucion a cliente"),
+    DEVOLUCION_PROVEEDOR("Devolucion de proveedor"),
+    OTRO("Otro");
+
+    private final String etiqueta;
+
+    CategoriaMovimientoFinanciero(String etiqueta) {
+        this.etiqueta = etiqueta;
+    }
+
+    /** Texto ya formateado para mostrar en pantalla (en vez de mostrar el name() crudo, ej. "OTRO"). */
+    public String getEtiqueta() {
+        return etiqueta;
+    }
 }

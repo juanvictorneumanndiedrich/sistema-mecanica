@@ -14,14 +14,14 @@ public class EmpleadoDAO extends AbstractGenericDAO<Empleado, Long> {
     }
 
     public List<Empleado> listarActivos() {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "FROM Empleado f WHERE f.activo = true ORDER BY f.nombre";
             return session.createQuery(hql, Empleado.class).list();
         }
     }
 
     public List<Empleado> buscarPorNombre(String nombre) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "FROM Empleado f WHERE LOWER(f.nombre) LIKE LOWER(:nombre) ORDER BY f.nombre";
             Query<Empleado> query = session.createQuery(hql, Empleado.class);
             query.setParameter("nombre", "%" + nombre + "%");

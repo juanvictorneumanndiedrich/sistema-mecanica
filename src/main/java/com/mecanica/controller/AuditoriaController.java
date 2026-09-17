@@ -3,11 +3,10 @@ package com.mecanica.controller;
 import com.mecanica.dao.RegistroAuditoriaDAO;
 import com.mecanica.model.RegistroAuditoria;
 import com.mecanica.model.Usuario;
+import com.mecanica.util.Moneda;
 import com.mecanica.util.Sesion;
 
 import java.math.BigDecimal;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -48,12 +47,7 @@ public class AuditoriaController {
 
     /** "Gs. 1.500.000" -- formato de valores para el detalle del registro. */
     public static String gs(BigDecimal valor) {
-        if (valor == null) {
-            return "Gs. 0";
-        }
-        DecimalFormatSymbols simbolos = new DecimalFormatSymbols();
-        simbolos.setGroupingSeparator('.');
-        return "Gs. " + new DecimalFormat("#,##0", simbolos).format(valor);
+        return Moneda.formatearConGs(valor);
     }
 
     public List<RegistroAuditoria> listar(LocalDate desde, LocalDate hasta, String login) {
@@ -61,5 +55,10 @@ public class AuditoriaController {
             throw new IllegalArgumentException("El periodo es invalido.");
         }
         return registroDAO.listar(desde, hasta, login);
+    }
+
+    /** true si ya existe un registro con esa accion (para pasos que solo deben ejecutarse una vez, ej. migraciones). */
+    public boolean yaSeRegistro(String accion) {
+        return registroDAO.existeAccion(accion);
     }
 }

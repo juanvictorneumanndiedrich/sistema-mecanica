@@ -39,7 +39,7 @@ public abstract class AbstractGenericDAO<T, ID> implements GenericDAO<T, ID> {
     @Override
     public T guardar(T entidad) {
         Transaction tx = null;
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = HibernateUtil.abrirSesion();
         try {
             tx = session.beginTransaction();
             // merge cubre tanto la insercion (entidad nueva, id nulo) como
@@ -57,14 +57,14 @@ public abstract class AbstractGenericDAO<T, ID> implements GenericDAO<T, ID> {
 
     @Override
     public T buscarPorId(ID id) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             return session.get(claseEntidad, id);
         }
     }
 
     @Override
     public List<T> listarTodos() {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "FROM " + claseEntidad.getSimpleName();
             Query<T> query = session.createQuery(hql, claseEntidad);
             return query.list();
@@ -74,7 +74,7 @@ public abstract class AbstractGenericDAO<T, ID> implements GenericDAO<T, ID> {
     @Override
     public void eliminar(T entidad) {
         Transaction tx = null;
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = HibernateUtil.abrirSesion();
         try {
             tx = session.beginTransaction();
             // Importante: se busca la entidad por id en vez de hacer merge. Con merge,

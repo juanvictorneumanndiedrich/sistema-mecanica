@@ -35,6 +35,7 @@ public class RegistroActividadDialog extends JDialog {
     private final TablaRegistrosModel modelo = new TablaRegistrosModel();
     private final JTable tabla = new JTable(modelo);
     private final JLabel labelMensaje = new JLabel(" ");
+    private BotonPlano botonFiltrar;
 
     public RegistroActividadDialog(Window padre) {
         super(padre, "Registro de actividad", ModalityType.APPLICATION_MODAL);
@@ -56,6 +57,7 @@ public class RegistroActividadDialog extends JDialog {
         botonFiltrar.addActionListener(e -> buscar());
         filtros.add(botonFiltrar);
         contenido.add(filtros, BorderLayout.NORTH);
+        this.botonFiltrar = botonFiltrar;
 
         LocalDate hoy = LocalDate.now();
         campoDesde.setText(hoy.minusDays(7).format(FORMATO_FECHA));
@@ -85,6 +87,8 @@ public class RegistroActividadDialog extends JDialog {
 
         setContentPane(contenido);
         setSize(new Dimension(1000, 600));
+        // Enter en los campos de fecha/usuario dispara el filtro.
+        getRootPane().setDefaultButton(botonFiltrar);
         setLocationRelativeTo(padre);
 
         cargarUsuarios();

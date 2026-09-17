@@ -27,6 +27,9 @@ public class MovimientoFinancieroController {
     public MovimientoFinanciero registrarMovimientoManual(TipoMovimientoFinanciero tipo, BigDecimal valor,
                                                           LocalDate fecha, String descripcion) {
         Sesion.exigir(Permiso.MOVIMIENTO_MANUAL);
+        if (tipo == null) {
+            throw new IllegalArgumentException("Debe indicar si el movimiento es una entrada o una salida.");
+        }
         if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("El valor del movimiento debe ser mayor que cero.");
         }

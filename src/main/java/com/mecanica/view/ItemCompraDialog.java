@@ -30,7 +30,7 @@ import java.util.List;
  */
 public class ItemCompraDialog extends JDialog {
 
-    private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
+    private static final DecimalFormat FORMATO_VALOR = com.mecanica.util.Moneda.nuevoFormatoValor();
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final ItemCompraController itemController = new ItemCompraController();
@@ -78,6 +78,9 @@ public class ItemCompraDialog extends JDialog {
         add(armarPanelEncabezado(), BorderLayout.NORTH);
         add(armarPanelItems(), BorderLayout.CENTER);
         add(armarPanelInferior(), BorderLayout.SOUTH);
+
+        // Enter en los campos de "nuevo item" agrega el item.
+        getRootPane().setDefaultButton(botonAgregar);
 
         setLocationRelativeTo(getOwner());
     }
@@ -439,7 +442,7 @@ public class ItemCompraDialog extends JDialog {
 
     private static class TablaItemsModel extends AbstractTableModel {
         private static final String[] COLUMNAS = {"Descripcion", "Cantidad", "Valor Unit. (Gs.)", "Valor Total (Gs.)"};
-        private static final DecimalFormat FORMATO_CANTIDAD = new DecimalFormat("#,##0.###");
+        private static final DecimalFormat FORMATO_CANTIDAD = com.mecanica.util.Moneda.nuevoFormatoCantidad();
 
         private List<ItemCompra> items = List.of();
 

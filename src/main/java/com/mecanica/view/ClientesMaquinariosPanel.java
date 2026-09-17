@@ -622,7 +622,7 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
 
     private static class TablaClientesModel extends AbstractTableModel {
         private static final String[] COLUMNAS = {"Nombre", "Documento", "Telefono", "Saldo (Gs.)"};
-        private static final DecimalFormat FORMATO_SALDO = new DecimalFormat("#,##0");
+        private static final DecimalFormat FORMATO_SALDO = com.mecanica.util.Moneda.nuevoFormatoValor();
 
         private List<Cliente> clientes = List.of();
 

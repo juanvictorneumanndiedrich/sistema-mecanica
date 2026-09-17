@@ -35,6 +35,10 @@ public class OrdenDeServicioController {
         if (cliente == null) {
             throw new IllegalArgumentException("El cliente es obligatorio para abrir una OS.");
         }
+        if (maquinario != null && maquinario.getCliente() != null
+                && !maquinario.getCliente().getId().equals(cliente.getId())) {
+            throw new IllegalArgumentException("Ese maquinario no pertenece al cliente seleccionado.");
+        }
         Long mayorNumero = ordemDeServicoDAO.buscarMayorNumero();
 
         OrdenDeServicio os = new OrdenDeServicio();
@@ -63,7 +67,7 @@ public class OrdenDeServicioController {
         }
 
         Transaction tx = null;
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = HibernateUtil.abrirSesion();
         try {
             tx = session.beginTransaction();
 
@@ -119,6 +123,10 @@ public class OrdenDeServicioController {
     }
 
     public void eliminar(OrdenDeServicio os) {
+        // Ninguna pantalla llama a este metodo hoy (una OS se cancela, no se
+        // elimina), pero si algun dia se usa tiene que exigir el mismo
+        // permiso que las demas eliminaciones delicadas del sistema.
+        Sesion.exigir(Permiso.ELIMINAR_REGISTROS);
         ordemDeServicoDAO.eliminar(os);
     }
 }

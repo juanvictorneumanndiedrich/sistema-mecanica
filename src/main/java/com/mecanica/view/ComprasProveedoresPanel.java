@@ -355,7 +355,7 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
             return;
         }
         BigDecimal saldo = proveedor.getSaldo() == null ? BigDecimal.ZERO : proveedor.getSaldo();
-        labelSaldoProveedor.setText("SALDO: Gs. " + new DecimalFormat("#,##0").format(saldo));
+        labelSaldoProveedor.setText("SALDO: Gs. " + com.mecanica.util.Moneda.nuevoFormatoValor().format(saldo));
         int comparacion = saldo.compareTo(BigDecimal.ZERO);
         if (comparacion > 0) {
             labelSaldoProveedor.setForeground(Paleta.ROJO_ERROR);
@@ -623,7 +623,7 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
         }
         int confirmacion = JOptionPane.showConfirmDialog(this,
                 "Eliminar la nota N° " + seleccionada.getNumero() + " con todos sus items? Su valor (Gs. "
-                        + new DecimalFormat("#,##0").format(seleccionada.getValorTotal())
+                        + com.mecanica.util.Moneda.nuevoFormatoValor().format(seleccionada.getValorTotal())
                         + ") se va a descontar de la cuenta del proveedor.",
                 "Confirmar eliminacion", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (confirmacion != JOptionPane.YES_OPTION) {
@@ -691,7 +691,7 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
 
     private static class TablaProveedoresModel extends AbstractTableModel {
         private static final String[] COLUMNAS = {"Nombre", "Documento", "Telefono", "Saldo (Gs.)"};
-        private static final DecimalFormat FORMATO_SALDO = new DecimalFormat("#,##0");
+        private static final DecimalFormat FORMATO_SALDO = com.mecanica.util.Moneda.nuevoFormatoValor();
 
         private List<Proveedor> proveedores = List.of();
 
@@ -745,7 +745,7 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
     private static class TablaComprasModel extends AbstractTableModel {
         private static final String[] COLUMNAS = {"N°", "Fecha", "Valor Total (Gs.)", "Estado"};
         private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
+        private static final DecimalFormat FORMATO_VALOR = com.mecanica.util.Moneda.nuevoFormatoValor();
 
         private List<Compra> compras = List.of();
         private Set<Long> pagadas = Set.of();

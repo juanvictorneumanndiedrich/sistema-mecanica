@@ -22,7 +22,7 @@ public class RetiroEmpleadoDAO extends AbstractGenericDAO<RetiroEmpleado, Long> 
      * usado en un pago de salario anterior no debe contarse de nuevo.
      */
     public List<RetiroEmpleado> listarPorEmpleadoYPeriodo(Empleado empleado, LocalDate inicio, LocalDate fin) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "FROM RetiroEmpleado r WHERE r.empleado = :empleado "
                     + "AND r.fecha BETWEEN :inicio AND :fin AND r.liquidado = false ORDER BY r.fecha";
             Query<RetiroEmpleado> query = session.createQuery(hql, RetiroEmpleado.class);
@@ -40,7 +40,7 @@ public class RetiroEmpleadoDAO extends AbstractGenericDAO<RetiroEmpleado, Long> 
      * empleado liquidados en la misma fecha del pago.
      */
     public List<RetiroEmpleado> listarPorPagoSalario(MovimientoFinanciero pago) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             Query<RetiroEmpleado> query = session.createQuery(
                     "FROM RetiroEmpleado r WHERE r.pagoSalario = :pago ORDER BY r.fecha", RetiroEmpleado.class);
             query.setParameter("pago", pago);

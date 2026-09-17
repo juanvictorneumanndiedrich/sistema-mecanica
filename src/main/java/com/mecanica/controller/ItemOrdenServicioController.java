@@ -29,9 +29,12 @@ public class ItemOrdenServicioController {
         if (valorUnitario == null || valorUnitario.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Valor unitario inválido.");
         }
+        if (descripcion == null || descripcion.trim().isEmpty()) {
+            throw new IllegalArgumentException("La descripción del item es obligatoria.");
+        }
 
         Transaction tx = null;
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = HibernateUtil.abrirSesion();
         try {
             tx = session.beginTransaction();
 
@@ -67,7 +70,7 @@ public class ItemOrdenServicioController {
 
     public void quitar(ItemOrdenServicio item) {
         Transaction tx = null;
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = HibernateUtil.abrirSesion();
         try {
             tx = session.beginTransaction();
 

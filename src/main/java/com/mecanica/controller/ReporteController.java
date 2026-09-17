@@ -280,11 +280,14 @@ public class ReporteController {
         }
         Cliente cliente = os.getCliente();
         Map<String, Object> parametros = new HashMap<>();
-        parametros.put("CLIENTE", cliente != null ? cliente.getNombre() : "");
+        // Los campos de cliente/maquinario en la via impresa son angostos (una sola
+        // linea): un nombre o direccion largos se acortan con "..." en vez de quedar
+        // cortados en seco sin ningun aviso.
+        parametros.put("CLIENTE", ReporteUtil.acortar(cliente != null ? cliente.getNombre() : "", 30));
         parametros.put("CLIENTE_DOCUMENTO", cliente != null ? cliente.getDocumento() : null);
         parametros.put("CLIENTE_TELEFONO", cliente != null ? cliente.getTelefono() : null);
-        parametros.put("CLIENTE_DIRECCION", cliente != null ? cliente.getDireccion() : null);
-        parametros.put("MAQUINARIO", maquinarioLegible(os.getMaquinario()));
+        parametros.put("CLIENTE_DIRECCION", ReporteUtil.acortar(cliente != null ? cliente.getDireccion() : "", 34));
+        parametros.put("MAQUINARIO", ReporteUtil.acortar(maquinarioLegible(os.getMaquinario()), 30));
         parametros.put("FECHA_APERTURA", ReporteUtil.fecha(os.getFechaApertura()));
         parametros.put("FECHA_CIERRE", os.getFechaCierre() == null ? null : ReporteUtil.fecha(os.getFechaCierre()));
         parametros.put("ESTADO", ReporteUtil.enumLegible(os.getEstado()));

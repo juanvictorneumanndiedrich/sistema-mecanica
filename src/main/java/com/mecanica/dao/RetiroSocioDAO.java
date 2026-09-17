@@ -18,7 +18,7 @@ public class RetiroSocioDAO extends AbstractGenericDAO<RetiroSocio, Long> {
 
     /** Se usa en la liquidacion (division de ganancia 50/50): suma lo que el socio ya retiro en el periodo. */
     public List<RetiroSocio> listarPorSocioYPeriodo(Socio socio, LocalDate inicio, LocalDate fin) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "FROM RetiroSocio r WHERE r.socio = :socio "
                     + "AND r.fecha BETWEEN :inicio AND :fin ORDER BY r.fecha";
             Query<RetiroSocio> query = session.createQuery(hql, RetiroSocio.class);
@@ -31,7 +31,7 @@ public class RetiroSocioDAO extends AbstractGenericDAO<RetiroSocio, Long> {
 
     /** Retiros de socio que fueron descontados en un cierre mensual (para el reporte del acerto). */
     public List<RetiroSocio> listarPorCierre(CierreMensual cierre) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "FROM RetiroSocio r WHERE r.cierre = :cierre ORDER BY r.fecha, r.id";
             Query<RetiroSocio> query = session.createQuery(hql, RetiroSocio.class);
             query.setParameter("cierre", cierre);

@@ -14,7 +14,7 @@ public class ProveedorDAO extends AbstractGenericDAO<Proveedor, Long> {
     }
 
     public List<Proveedor> buscarPorNombre(String nombre) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "FROM Proveedor f WHERE LOWER(f.nombre) LIKE LOWER(:nombre) ORDER BY f.nombre";
             Query<Proveedor> query = session.createQuery(hql, Proveedor.class);
             query.setParameter("nombre", "%" + nombre + "%");
@@ -23,7 +23,7 @@ public class ProveedorDAO extends AbstractGenericDAO<Proveedor, Long> {
     }
 
     public Proveedor buscarPorDocumento(String documento) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "FROM Proveedor f WHERE f.documento = :documento";
             Query<Proveedor> query = session.createQuery(hql, Proveedor.class);
             query.setParameter("documento", documento);

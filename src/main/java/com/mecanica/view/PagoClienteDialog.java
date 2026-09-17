@@ -38,7 +38,7 @@ import java.time.format.DateTimeParseException;
 public class PagoClienteDialog extends JDialog {
 
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
+    private static final DecimalFormat FORMATO_VALOR = com.mecanica.util.Moneda.nuevoFormatoValor();
 
     private final JLabel labelResumen = new JLabel(" ");
     private final JTextField campoValor = new JTextField();

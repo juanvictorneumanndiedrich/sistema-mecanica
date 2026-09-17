@@ -19,7 +19,7 @@ public class RegistroAuditoriaDAO extends AbstractGenericDAO<RegistroAuditoria, 
      * Con login null o vacio trae los de todos los usuarios.
      */
     public List<RegistroAuditoria> listar(LocalDate desde, LocalDate hasta, String login) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             boolean filtrarUsuario = login != null && !login.isBlank();
             String hql = "FROM RegistroAuditoria r WHERE r.fechaHora >= :desde AND r.fechaHora < :hasta"
                     + (filtrarUsuario ? " AND r.usuarioLogin = :login" : "")
@@ -31,6 +31,15 @@ public class RegistroAuditoriaDAO extends AbstractGenericDAO<RegistroAuditoria, 
                 query.setParameter("login", login);
             }
             return query.list();
+        }
+    }
+
+    /** true si ya existe un registro con esa accion exacta (para pasos de migracion que solo deben correr una vez). */
+    public boolean existeAccion(String accion) {
+        try (Session session = HibernateUtil.abrirSesion()) {
+            String hql = "SELECT COUNT(r) FROM RegistroAuditoria r WHERE r.accion = :accion";
+            Long total = session.createQuery(hql, Long.class).setParameter("accion", accion).getSingleResult();
+            return total != null && total > 0;
         }
     }
 }

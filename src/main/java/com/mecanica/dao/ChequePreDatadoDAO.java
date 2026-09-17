@@ -16,7 +16,7 @@ public class ChequePreDatadoDAO extends AbstractGenericDAO<ChequePreDatado, Long
 
     /** Se usa en la pestaña "Cheques Pendientes" de la pantalla Financiero. */
     public List<ChequePreDatado> listarPorEstado(EstadoCheque estado) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "FROM ChequePreDatado c WHERE c.estado = :estado ORDER BY c.fechaVencimiento";
             Query<ChequePreDatado> query = session.createQuery(hql, ChequePreDatado.class);
             query.setParameter("estado", estado);

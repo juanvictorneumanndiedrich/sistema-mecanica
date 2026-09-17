@@ -15,7 +15,7 @@ public class ItemCompraDAO extends AbstractGenericDAO<ItemCompra, Long> {
     }
 
     public List<ItemCompra> listarPorCompra(Compra compra) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "FROM ItemCompra i WHERE i.compra = :compra ORDER BY i.id";
             Query<ItemCompra> query = session.createQuery(hql, ItemCompra.class);
             query.setParameter("compra", compra);

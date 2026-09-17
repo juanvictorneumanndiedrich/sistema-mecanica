@@ -21,7 +21,7 @@ import java.time.format.DateTimeParseException;
 public class EmpleadoFormDialog extends JDialog {
 
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final DecimalFormat FORMATO_SALARIO = new DecimalFormat("#,##0");
+    private static final DecimalFormat FORMATO_SALARIO = com.mecanica.util.Moneda.nuevoFormatoValor();
 
     private final JTextField campoNombre = new JTextField();
     private final JTextField campoDocumento = new JTextField();

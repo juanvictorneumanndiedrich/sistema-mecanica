@@ -17,6 +17,9 @@ public final class Validaciones {
     private static final Pattern DOCUMENTO = Pattern.compile("[0-9]+(-[0-9]+)?");
     private static final Pattern ALFANUMERICO_ESPACIO_GUION = Pattern.compile("[\\p{L}0-9 \\-]+");
     private static final Pattern ALFANUMERICO = Pattern.compile("[\\p{L}0-9]+");
+    // nombre de persona o razon social: letras, espacios, punto, guion y apostrofe
+    // (permite "Transportes Díaz S.R.L.", "Agro-Sur", "O'Higgins")
+    private static final Pattern NOMBRE_O_RAZON_SOCIAL = Pattern.compile("[\\p{L}0-9 .\\-']+");
 
     private Validaciones() {
     }
@@ -26,9 +29,18 @@ public final class Validaciones {
         return texto == null || texto.trim().isEmpty();
     }
 
-    /** Solo letras (con acentos/enie) y espacios -- para nombres. */
+    /** Solo letras (con acentos/enie) y espacios -- para nombres de persona. */
     public static boolean soloLetras(String texto) {
         return texto != null && SOLO_LETRAS.matcher(texto.trim()).matches();
+    }
+
+    /**
+     * Nombre de persona o razon social -- letras, numeros, espacios, punto,
+     * guion y apostrofe. Para clientes y proveedores, donde el nombre puede
+     * ser una empresa ("Transportes Díaz S.R.L.", "Agro-Sur", "O'Higgins").
+     */
+    public static boolean nombreORazonSocial(String texto) {
+        return texto != null && NOMBRE_O_RAZON_SOCIAL.matcher(texto.trim()).matches();
     }
 
     /** Solo digitos, sin letras ni simbolos -- para telefonos, cantidades, etc. */

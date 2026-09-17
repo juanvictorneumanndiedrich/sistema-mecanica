@@ -13,7 +13,7 @@ public class SocioDAO extends AbstractGenericDAO<Socio, Long> {
     }
 
     public List<Socio> listarActivos() {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "FROM Socio s WHERE s.activo = true ORDER BY s.nombre";
             return session.createQuery(hql, Socio.class).list();
         }

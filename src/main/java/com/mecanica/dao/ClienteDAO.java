@@ -24,7 +24,7 @@ public class ClienteDAO extends AbstractGenericDAO<Cliente, Long> {
 
     /** Busqueda por nombre (que contenga el texto), usada en la pantalla de Clientes y Maquinarios. */
     public List<Cliente> buscarPorNombre(String nombre) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "FROM Cliente c WHERE LOWER(c.nombre) LIKE LOWER(:nombre) ORDER BY c.nombre";
             Query<Cliente> query = session.createQuery(hql, Cliente.class);
             query.setParameter("nombre", "%" + nombre + "%");
@@ -34,7 +34,7 @@ public class ClienteDAO extends AbstractGenericDAO<Cliente, Long> {
 
     /** Busca por documento (CI/RUC) exato. */
     public Cliente buscarPorDocumento(String documento) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try (Session session = HibernateUtil.abrirSesion()) {
             String hql = "FROM Cliente c WHERE c.documento = :documento";
             Query<Cliente> query = session.createQuery(hql, Cliente.class);
             query.setParameter("documento", documento);

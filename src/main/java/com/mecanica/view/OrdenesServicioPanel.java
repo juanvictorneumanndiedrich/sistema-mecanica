@@ -386,7 +386,7 @@ public class OrdenesServicioPanel extends JPanel implements PanelActualizable {
 
     private static class TablaOrdenesModel extends AbstractTableModel {
         private static final String[] COLUMNAS = {"N°", "Cliente", "Maquinario", "Fecha Apertura", "Estado", "Valor Total (Gs.)"};
-        private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
+        private static final DecimalFormat FORMATO_VALOR = com.mecanica.util.Moneda.nuevoFormatoValor();
         private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
         private List<OrdenDeServicio> ordenes = List.of();

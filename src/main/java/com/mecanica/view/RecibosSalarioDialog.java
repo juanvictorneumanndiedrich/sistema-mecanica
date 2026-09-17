@@ -90,6 +90,8 @@ public class RecibosSalarioDialog extends JDialog {
 
         setContentPane(contenido);
         setSize(new Dimension(640, 420));
+        // Enter imprime el recibo seleccionado (el boton queda deshabilitado hasta elegir una fila).
+        getRootPane().setDefaultButton(botonImprimir);
         setLocationRelativeTo(padre);
 
         cargar(empleado);
@@ -134,7 +136,7 @@ public class RecibosSalarioDialog extends JDialog {
 
     private static class TablaPagosModel extends AbstractTableModel {
         private static final String[] COLUMNAS = {"Fecha", "Concepto", "Salario (Gs.)"};
-        private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
+        private static final DecimalFormat FORMATO_VALOR = com.mecanica.util.Moneda.nuevoFormatoValor();
         private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
         private List<MovimientoFinanciero> pagos = List.of();

@@ -34,11 +34,14 @@ public class ItemCompraController {
         if (valorUnitario == null || valorUnitario.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Valor unitario inválido.");
         }
+        if (descripcion == null || descripcion.trim().isEmpty()) {
+            throw new IllegalArgumentException("La descripción del item es obligatoria.");
+        }
         compraController.verificarEditable(compra);
         BigDecimal valorItem = cantidad.multiply(valorUnitario);
 
         Transaction tx = null;
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = HibernateUtil.abrirSesion();
         try {
             tx = session.beginTransaction();
 
@@ -68,7 +71,7 @@ public class ItemCompraController {
         compraController.verificarEditable(item.getCompra());
 
         Transaction tx = null;
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = HibernateUtil.abrirSesion();
         try {
             tx = session.beginTransaction();
 

@@ -53,7 +53,7 @@ import java.util.Set;
 public class FinancieroPanel extends JPanel implements PanelActualizable {
 
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final DecimalFormat FORMATO_SALDO = new DecimalFormat("#,##0");
+    private static final DecimalFormat FORMATO_SALDO = com.mecanica.util.Moneda.nuevoFormatoValor();
     private static final String TODOS_LOS_TIPOS = "(todos)";
     private static final String TIPO_INGRESO = "Ingreso";
     private static final String TIPO_EGRESO = "Egreso";
@@ -572,7 +572,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         ChequePreDatado seleccionado = modeloCheques.getCheque(tablaCheques.convertRowIndexToModel(filaSeleccionada));
 
         int opcion = JOptionPane.showConfirmDialog(this,
-                "Confirmar que el cheque de Gs. " + new DecimalFormat("#,##0").format(seleccionado.getValor())
+                "Confirmar que el cheque de Gs. " + com.mecanica.util.Moneda.nuevoFormatoValor().format(seleccionado.getValor())
                         + " ya vencio y se compenso? Esto va a generar el movimiento correspondiente en Financiero.",
                 "Confirmar cheque", JOptionPane.YES_NO_OPTION);
         if (opcion != JOptionPane.YES_OPTION) {
@@ -904,7 +904,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         private static final String[] COLUMNAS =
                 {"Fecha", "Tipo", "Categoria", "De quien", "Descripcion", "Descuento (Gs.)", "Descuento (%)",
                         "Valor (Gs.)"};
-        private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
+        private static final DecimalFormat FORMATO_VALOR = com.mecanica.util.Moneda.nuevoFormatoValor();
         private static final DateTimeFormatter FORMATO_FECHA_TABLA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
         private List<MovimientoFinanciero> movimientos = List.of();
@@ -956,7 +956,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
                 case 1:
                     return movimiento.getTipo() == TipoMovimientoFinanciero.ENTRADA ? "Ingreso" : "Egreso";
                 case 2:
-                    return movimiento.getCategoria() == null ? "" : movimiento.getCategoria().name().replace("_", " ");
+                    return movimiento.getCategoria() == null ? "" : movimiento.getCategoria().getEtiqueta();
                 case 3:
                     return deQuien(movimiento);
                 case 4:
@@ -985,7 +985,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
     private static class TablaChequesPendientesModel extends AbstractTableModel {
         private static final String[] COLUMNAS =
                 {"Origen", "Nombre", "N° Cheque", "Banco", "Vencimiento", "Valor (Gs.)"};
-        private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
+        private static final DecimalFormat FORMATO_VALOR = com.mecanica.util.Moneda.nuevoFormatoValor();
         private static final DateTimeFormatter FORMATO_FECHA_TABLA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
         private List<ChequePreDatado> cheques = List.of();
@@ -1046,7 +1046,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
      */
     private static class TablaPendientesCierreModel extends AbstractTableModel {
         private static final String[] COLUMNAS = {"", "Fecha", "Tipo", "Categoria", "Descripcion", "Valor (Gs.)"};
-        private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
+        private static final DecimalFormat FORMATO_VALOR = com.mecanica.util.Moneda.nuevoFormatoValor();
         private static final DateTimeFormatter FORMATO_FECHA_TABLA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
         private List<MovimientoFinanciero> movimientos = List.of();
@@ -1121,7 +1121,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
                 case 2:
                     return movimiento.getTipo() == TipoMovimientoFinanciero.ENTRADA ? "Ingreso" : "Egreso";
                 case 3:
-                    return movimiento.getCategoria() == null ? "" : movimiento.getCategoria().name().replace("_", " ");
+                    return movimiento.getCategoria() == null ? "" : movimiento.getCategoria().getEtiqueta();
                 case 4:
                     return movimiento.getDescripcion() == null ? "" : movimiento.getDescripcion();
                 case 5:
@@ -1139,7 +1139,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
     /** Tabla del historico de cierres ya hechos, en la pestaña "Cierre Mensual". */
     private static class TablaHistoricoCierresModel extends AbstractTableModel {
         private static final String[] COLUMNAS = {"Fecha", "Descripcion", "Ganancia (Gs.)"};
-        private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
+        private static final DecimalFormat FORMATO_VALOR = com.mecanica.util.Moneda.nuevoFormatoValor();
         private static final DateTimeFormatter FORMATO_FECHA_TABLA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
         private List<CierreMensual> cierres = List.of();

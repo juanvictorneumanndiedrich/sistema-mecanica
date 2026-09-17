@@ -106,6 +106,24 @@ public final class ReporteUtil {
         return valor == null ? BigDecimal.ZERO : valor;
     }
 
+    /**
+     * Acorta un texto que va en un campo angosto de un reporte impreso (por
+     * ejemplo el nombre o la direccion del cliente en la via de la Orden de
+     * Servicio), agregando "..." cuando no entra entero. Sin esto,
+     * JasperReports corta el texto en seco en el borde del campo, sin
+     * ningun aviso de que sigue habiendo mas texto.
+     */
+    public static String acortar(String texto, int maximo) {
+        if (texto == null) {
+            return "";
+        }
+        String recortado = texto.trim();
+        if (recortado.length() <= maximo) {
+            return recortado;
+        }
+        return recortado.substring(0, Math.max(0, maximo - 1)).trim() + "…";
+    }
+
     /** "EN_PROCESO" -> "En proceso", "VALE_SEMANAL" -> "Vale semanal". */
     public static String enumLegible(Enum<?> valor) {
         if (valor == null) {

@@ -60,7 +60,7 @@ public class ChequePreDatadoController {
         BigDecimal descuento = validarDescuento(descuentoValor);
 
         Transaction tx = null;
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = HibernateUtil.abrirSesion();
         try {
             tx = session.beginTransaction();
 
@@ -124,7 +124,7 @@ public class ChequePreDatadoController {
         BigDecimal descuento = validarDescuento(descuentoValor);
 
         Transaction tx = null;
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = HibernateUtil.abrirSesion();
         try {
             tx = session.beginTransaction();
 
@@ -177,7 +177,7 @@ public class ChequePreDatadoController {
         }
 
         Transaction tx = null;
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = HibernateUtil.abrirSesion();
         try {
             tx = session.beginTransaction();
 

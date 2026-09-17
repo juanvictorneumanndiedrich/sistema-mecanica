@@ -15,7 +15,7 @@ import java.text.DecimalFormat;
  */
 public class RetirarSaldoDialog extends JDialog {
 
-    private static final DecimalFormat FORMATO_VALOR = new DecimalFormat("#,##0");
+    private static final DecimalFormat FORMATO_VALOR = com.mecanica.util.Moneda.nuevoFormatoValor();
 
     private final JLabel labelCredito = new JLabel();
     private final JTextField campoValor = new JTextField();
