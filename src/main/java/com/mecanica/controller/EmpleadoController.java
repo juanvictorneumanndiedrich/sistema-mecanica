@@ -1,6 +1,7 @@
 package com.mecanica.controller;
 
 import com.mecanica.dao.EmpleadoDAO;
+import com.mecanica.dao.MovimientoFinancieroDAO;
 import com.mecanica.dao.RetiroEmpleadoDAO;
 import com.mecanica.enums.CategoriaMovimientoFinanciero;
 import com.mecanica.enums.TipoMovimientoFinanciero;
@@ -14,6 +15,7 @@ import org.hibernate.query.Query;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,6 +29,9 @@ public class EmpleadoController {
 
     private final EmpleadoDAO funcionarioDAO = new EmpleadoDAO();
     private final RetiroEmpleadoDAO retiradaFuncionarioDAO = new RetiroEmpleadoDAO();
+    private final MovimientoFinancieroDAO movimientoDAO = new MovimientoFinancieroDAO();
+
+    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public Empleado guardar(Empleado empleado) {
         validar(empleado);
@@ -105,35 +110,48 @@ public class EmpleadoController {
             query.setParameter("fin", fin);
             List<RetiroEmpleado> retiradas = query.list();
 
-            BigDecimal totalDescontado = BigDecimal.ZERO;
-            for (RetiroEmpleado r : retiradas) {
-                totalDescontado = totalDescontado.add(r.getValor());
-                r.setLiquidado(true);
-                r.setFechaLiquidacion(fechaPago);
-                session.merge(r);
-            }
-
             BigDecimal salarioBase = empleado.getSalarioBase() != null ? empleado.getSalarioBase() : BigDecimal.ZERO;
-            BigDecimal valorLiquido = salarioBase.subtract(totalDescontado);
 
+            // El movimiento se graba ANTES de marcar los retiros, para que cada
+            // retiro quede vinculado a este pago (pagoSalario) -- asi el recibo
+            // se puede reimprimir despues con los descuentos exactos.
             MovimientoFinanciero movimiento = new MovimientoFinanciero();
             movimiento.setFecha(fechaPago);
             movimiento.setTipo(TipoMovimientoFinanciero.SALIDA);
             movimiento.setCategoria(CategoriaMovimientoFinanciero.SALARIO_EMPLEADO);
             movimiento.setValor(salarioBase);
             movimiento.setDescripcion("Salario de " + empleado.getNombre() + " ("
-                    + inicio + " a " + fin + ")");
+                    + inicio.format(FORMATO_FECHA) + " a " + fin.format(FORMATO_FECHA) + ")");
             movimiento.setEmpleado(empleado);
             session.persist(movimiento);
 
+            BigDecimal totalDescontado = BigDecimal.ZERO;
+            for (RetiroEmpleado r : retiradas) {
+                totalDescontado = totalDescontado.add(r.getValor());
+                r.setLiquidado(true);
+                r.setFechaLiquidacion(fechaPago);
+                r.setPagoSalario(movimiento);
+                session.merge(r);
+            }
+
+            BigDecimal valorLiquido = salarioBase.subtract(totalDescontado);
+
             tx.commit();
-            return new ResultadoCierreMensual(empleado, new ArrayList<>(retiradas), totalDescontado, valorLiquido);
+            ResultadoCierreMensual resultado =
+                    new ResultadoCierreMensual(empleado, new ArrayList<>(retiradas), totalDescontado, valorLiquido);
+            resultado.pagoSalario = movimiento;
+            return resultado;
         } catch (RuntimeException e) {
             if (tx != null && tx.isActive()) {
                 tx.rollback();
             }
             throw e;
         }
+    }
+
+    /** Pagos de salario ya hechos al empleado (el mas reciente primero), para reimprimir el recibo. */
+    public List<MovimientoFinanciero> listarPagosSalario(Empleado empleado) {
+        return movimientoDAO.listarSalariosPorEmpleado(empleado);
     }
 
     private void validar(Empleado empleado) {
@@ -148,6 +166,8 @@ public class EmpleadoController {
         private final List<RetiroEmpleado> retiradas;
         private final BigDecimal totalDescontado;
         private final BigDecimal valorLiquido;
+        /** Movimiento del pago real -- null en la vista previa (calcularCierreMensual). */
+        private MovimientoFinanciero pagoSalario;
 
         public ResultadoCierreMensual(Empleado empleado, List<RetiroEmpleado> retiradas,
                                           BigDecimal totalDescontado, BigDecimal valorLiquido) {
@@ -171,6 +191,10 @@ public class EmpleadoController {
 
         public BigDecimal getValorLiquido() {
             return valorLiquido;
+        }
+
+        public MovimientoFinanciero getPagoSalario() {
+            return pagoSalario;
         }
     }
 }

@@ -3,6 +3,7 @@ package com.mecanica.view;
 import com.mecanica.controller.ChequePreDatadoController;
 import com.mecanica.controller.CompraController;
 import com.mecanica.controller.ProveedorController;
+import com.mecanica.controller.ReporteController;
 import com.mecanica.enums.EstadoCompra;
 import com.mecanica.model.Compra;
 import com.mecanica.model.Proveedor;
@@ -45,6 +46,7 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
     private final ProveedorController proveedorController = new ProveedorController();
     private final CompraController compraController = new CompraController();
     private final ChequePreDatadoController chequeController = new ChequePreDatadoController();
+    private final ReporteController reporteController = new ReporteController();
 
     private final TablaProveedoresModel modeloProveedores = new TablaProveedoresModel();
     private final TablaComprasModel modeloCompras = new TablaComprasModel();
@@ -110,7 +112,14 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
 
         BotonPlano botonNuevoProveedor = new BotonPlano("NUEVO PROVEEDOR");
         botonNuevoProveedor.addActionListener(e -> onNuevoProveedor());
-        encabezado.add(botonNuevoProveedor, BorderLayout.EAST);
+        BotonPlano botonImprimirProveedores = new BotonPlano("IMPRIMIR LISTADO", Paleta.GRIS_TEXTO, Paleta.GRIS_TEXTO.brighter());
+        botonImprimirProveedores.addActionListener(e ->
+                VisorReporte.mostrar(this, "Listado de Proveedores", reporteController::listadoProveedores));
+        JPanel accionesEncabezado = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        accionesEncabezado.setOpaque(false);
+        accionesEncabezado.add(botonImprimirProveedores);
+        accionesEncabezado.add(botonNuevoProveedor);
+        encabezado.add(accionesEncabezado, BorderLayout.EAST);
         panel.add(encabezado, BorderLayout.NORTH);
 
         JPanel centro = new JPanel(new BorderLayout(0, 8));

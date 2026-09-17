@@ -1,6 +1,7 @@
 package com.mecanica.view;
 
 import com.mecanica.controller.OrdenDeServicioController;
+import com.mecanica.controller.ReporteController;
 import com.mecanica.enums.EstadoOrdenServicio;
 import com.mecanica.model.Maquinario;
 import com.mecanica.model.OrdenDeServicio;
@@ -32,6 +33,7 @@ import java.util.List;
 public class OrdenesServicioPanel extends JPanel implements PanelActualizable {
 
     private final OrdenDeServicioController ordenDeServicioController = new OrdenDeServicioController();
+    private final ReporteController reporteController = new ReporteController();
 
     private final TablaOrdenesModel modeloOrdenes = new TablaOrdenesModel();
     private final JTable tablaOrdenes = new JTable(modeloOrdenes);
@@ -42,6 +44,7 @@ public class OrdenesServicioPanel extends JPanel implements PanelActualizable {
     private final BotonPlano botonVerEditar = new BotonPlano("VER / EDITAR ITEMS", Paleta.AZUL, Paleta.AZUL_CLARO);
     private final BotonPlano botonCerrar = new BotonPlano("CERRAR OS", Paleta.AZUL, Paleta.AZUL_CLARO);
     private final BotonPlano botonCancelar = new BotonPlano("CANCELAR OS", Paleta.ROJO_ERROR, Paleta.ROJO_ERROR.brighter());
+    private final BotonPlano botonImprimir = new BotonPlano("IMPRIMIR OS", Paleta.GRIS_TEXTO, Paleta.GRIS_TEXTO.brighter());
 
     /** Ultimo resultado traido de la base para el filtro de estado actual; la busqueda por cliente filtra sobre esta lista. */
     private List<OrdenDeServicio> ordenesCargadas = List.of();
@@ -134,9 +137,11 @@ public class OrdenesServicioPanel extends JPanel implements PanelActualizable {
         botonVerEditar.addActionListener(e -> onVerEditar());
         botonCerrar.addActionListener(e -> onCerrarOS());
         botonCancelar.addActionListener(e -> onCancelarOS());
+        botonImprimir.addActionListener(e -> onImprimirOS());
         botones.add(botonVerEditar);
         botones.add(botonCerrar);
         botones.add(botonCancelar);
+        botones.add(botonImprimir);
         return botones;
     }
 
@@ -222,11 +227,21 @@ public class OrdenesServicioPanel extends JPanel implements PanelActualizable {
         OrdenDeServicio seleccionada = ordenSeleccionada();
         boolean hay = seleccionada != null;
         botonVerEditar.setEnabled(hay);
+        botonImprimir.setEnabled(hay);
         boolean puedeCerrarOCancelar = hay
                 && seleccionada.getEstado() != EstadoOrdenServicio.CONCLUIDA
                 && seleccionada.getEstado() != EstadoOrdenServicio.CANCELADA;
         botonCerrar.setEnabled(puedeCerrarOCancelar);
         botonCancelar.setEnabled(puedeCerrarOCancelar);
+    }
+
+    private void onImprimirOS() {
+        OrdenDeServicio seleccionada = ordenSeleccionada();
+        if (seleccionada == null) {
+            return;
+        }
+        VisorReporte.mostrar(this, "Orden de Servicio N° " + seleccionada.getNumero(),
+                () -> reporteController.ordenServicio(seleccionada));
     }
 
     private void setHabilitado(boolean habilitado) {

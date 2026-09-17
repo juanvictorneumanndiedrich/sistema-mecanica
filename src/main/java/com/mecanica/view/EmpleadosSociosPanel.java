@@ -1,10 +1,12 @@
 package com.mecanica.view;
 
 import com.mecanica.controller.EmpleadoController;
+import com.mecanica.controller.ReporteController;
 import com.mecanica.controller.RetiroEmpleadoController;
 import com.mecanica.controller.RetiroSocioController;
 import com.mecanica.controller.SocioController;
 import com.mecanica.model.Empleado;
+import com.mecanica.model.MovimientoFinanciero;
 import com.mecanica.model.RetiroEmpleado;
 import com.mecanica.model.Socio;
 
@@ -54,6 +56,7 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
     private final SocioController socioController = new SocioController();
     private final RetiroEmpleadoController retiroEmpleadoController = new RetiroEmpleadoController();
     private final RetiroSocioController retiroSocioController = new RetiroSocioController();
+    private final ReporteController reporteController = new ReporteController();
 
     private final TablaEmpleadosModel modeloEmpleados = new TablaEmpleadosModel();
     private final TablaSociosModel modeloSocios = new TablaSociosModel();
@@ -66,6 +69,7 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
     private final BotonPlano botonRetiroEmpleado = new BotonPlano("REGISTRAR RETIRO", Paleta.AZUL, Paleta.AZUL_CLARO);
     private final BotonPlano botonCalcularCierre = new BotonPlano("CALCULAR");
     private final BotonPlano botonPagarSalario = new BotonPlano("PAGAR SALARIO", Paleta.VERDE_EXITO, Paleta.VERDE_EXITO.brighter());
+    private final BotonPlano botonRecibos = new BotonPlano("RECIBOS DE SALARIO", Paleta.GRIS_TEXTO, Paleta.GRIS_TEXTO.brighter());
 
     private final BotonPlano botonEditarSocio = new BotonPlano("EDITAR", Paleta.AZUL, Paleta.AZUL_CLARO);
     private final BotonPlano botonEliminarSocio = new BotonPlano("ELIMINAR", Paleta.ROJO_ERROR, Paleta.ROJO_ERROR.brighter());
@@ -118,7 +122,14 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
 
         BotonPlano botonNuevoEmpleado = new BotonPlano("NUEVO EMPLEADO");
         botonNuevoEmpleado.addActionListener(e -> onNuevoEmpleado());
-        encabezado.add(botonNuevoEmpleado, BorderLayout.EAST);
+        BotonPlano botonImprimirEmpleados = new BotonPlano("IMPRIMIR LISTADO", Paleta.GRIS_TEXTO, Paleta.GRIS_TEXTO.brighter());
+        botonImprimirEmpleados.addActionListener(e ->
+                VisorReporte.mostrar(this, "Listado de Empleados", reporteController::listadoEmpleados));
+        JPanel accionesEncabezado = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        accionesEncabezado.setOpaque(false);
+        accionesEncabezado.add(botonImprimirEmpleados);
+        accionesEncabezado.add(botonNuevoEmpleado);
+        encabezado.add(accionesEncabezado, BorderLayout.EAST);
         panel.add(encabezado, BorderLayout.NORTH);
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
@@ -149,9 +160,11 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
         botonEditarEmpleado.addActionListener(e -> onEditarEmpleado());
         botonEliminarEmpleado.addActionListener(e -> onEliminarEmpleado());
         botonRetiroEmpleado.addActionListener(e -> onRegistrarRetiroEmpleado());
+        botonRecibos.addActionListener(e -> onRecibosSalario());
         botones.add(botonEditarEmpleado);
         botones.add(botonEliminarEmpleado);
         botones.add(botonRetiroEmpleado);
+        botones.add(botonRecibos);
         panel.add(botones, BorderLayout.SOUTH);
 
         return panel;
@@ -364,6 +377,7 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
         botonRetiroEmpleado.setEnabled(hay);
         botonCalcularCierre.setEnabled(hay);
         botonPagarSalario.setEnabled(hay);
+        botonRecibos.setEnabled(hay);
     }
 
     private void actualizarEstadoBotonesSocio() {
@@ -632,8 +646,28 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
                 }
                 areaReporteEmpleado.setText(formatearCierre(resultado, inicioFinal, finFinal)
                         + "\n>> SALARIO PAGADO -- gasto registrado en Financiero.\n");
+
+                MovimientoFinanciero pago = resultado.getPagoSalario();
+                if (pago != null) {
+                    int imprimir = JOptionPane.showConfirmDialog(EmpleadosSociosPanel.this,
+                            "Salario pagado. Desea imprimir el recibo ahora?\n"
+                                    + "(Tambien se puede reimprimir despues en RECIBOS DE SALARIO.)",
+                            "Imprimir recibo", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+                    if (imprimir == JOptionPane.YES_OPTION) {
+                        VisorReporte.mostrar(EmpleadosSociosPanel.this, "Recibo de Salario",
+                                () -> reporteController.reciboSalario(pago));
+                    }
+                }
             }
         }.execute();
+    }
+
+    private void onRecibosSalario() {
+        Empleado seleccionado = empleadoSeleccionado();
+        if (seleccionado == null) {
+            return;
+        }
+        new RecibosSalarioDialog(ventana(), seleccionado).setVisible(true);
     }
 
     private String formatearCierre(EmpleadoController.ResultadoCierreMensual resultado, LocalDate inicio, LocalDate fin) {

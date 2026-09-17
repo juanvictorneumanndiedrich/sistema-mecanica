@@ -1,6 +1,7 @@
 package com.mecanica.dao;
 
 import com.mecanica.model.Empleado;
+import com.mecanica.model.MovimientoFinanciero;
 import com.mecanica.model.RetiroEmpleado;
 import com.mecanica.util.HibernateUtil;
 import org.hibernate.Session;
@@ -29,6 +30,31 @@ public class RetiroEmpleadoDAO extends AbstractGenericDAO<RetiroEmpleado, Long> 
             query.setParameter("inicio", inicio);
             query.setParameter("fin", fin);
             return query.list();
+        }
+    }
+
+    /**
+     * Retiros descontados en un pago de salario, para reimprimir el recibo.
+     * Busca por el vinculo pagoSalario; para los pagos hechos antes de que
+     * existiera ese vinculo (2026-09-17), cae en los retiros del mismo
+     * empleado liquidados en la misma fecha del pago.
+     */
+    public List<RetiroEmpleado> listarPorPagoSalario(MovimientoFinanciero pago) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Query<RetiroEmpleado> query = session.createQuery(
+                    "FROM RetiroEmpleado r WHERE r.pagoSalario = :pago ORDER BY r.fecha", RetiroEmpleado.class);
+            query.setParameter("pago", pago);
+            List<RetiroEmpleado> vinculados = query.list();
+            if (!vinculados.isEmpty() || pago.getEmpleado() == null) {
+                return vinculados;
+            }
+            Query<RetiroEmpleado> antiguos = session.createQuery(
+                    "FROM RetiroEmpleado r WHERE r.empleado = :empleado AND r.liquidado = true "
+                            + "AND r.pagoSalario IS NULL AND r.fechaLiquidacion = :fecha ORDER BY r.fecha",
+                    RetiroEmpleado.class);
+            antiguos.setParameter("empleado", pago.getEmpleado());
+            antiguos.setParameter("fecha", pago.getFecha());
+            return antiguos.list();
         }
     }
 }

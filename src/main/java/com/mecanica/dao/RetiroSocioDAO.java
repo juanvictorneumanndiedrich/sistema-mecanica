@@ -1,5 +1,6 @@
 package com.mecanica.dao;
 
+import com.mecanica.model.CierreMensual;
 import com.mecanica.model.RetiroSocio;
 import com.mecanica.model.Socio;
 import com.mecanica.util.HibernateUtil;
@@ -24,6 +25,16 @@ public class RetiroSocioDAO extends AbstractGenericDAO<RetiroSocio, Long> {
             query.setParameter("socio", socio);
             query.setParameter("inicio", inicio);
             query.setParameter("fin", fin);
+            return query.list();
+        }
+    }
+
+    /** Retiros de socio que fueron descontados en un cierre mensual (para el reporte del acerto). */
+    public List<RetiroSocio> listarPorCierre(CierreMensual cierre) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            String hql = "FROM RetiroSocio r WHERE r.cierre = :cierre ORDER BY r.fecha, r.id";
+            Query<RetiroSocio> query = session.createQuery(hql, RetiroSocio.class);
+            query.setParameter("cierre", cierre);
             return query.list();
         }
     }

@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Taller JB - listado_empleados.jrxml (JasperReports 6.x). Datos llenados por ReporteController. -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="listado_empleados" pageWidth="595" pageHeight="842" orientation="Portrait" whenNoDataType="AllSectionsNoDetail" columnWidth="539" leftMargin="28" rightMargin="28" topMargin="28" bottomMargin="28">
+
+<parameter name="TALLER_NOMBRE" class="java.lang.String"/>
+<parameter name="TALLER_DATOS" class="java.lang.String"/>
+<parameter name="TITULO" class="java.lang.String"/>
+<parameter name="SUBTITULO" class="java.lang.String"/>
+<parameter name="FECHA_EMISION" class="java.lang.String"/>
+<field name="nombre" class="java.lang.String"/>
+<field name="documento" class="java.lang.String"/>
+<field name="cargo" class="java.lang.String"/>
+<field name="telefono" class="java.lang.String"/>
+<field name="fechaAdmision" class="java.lang.String"/>
+<field name="activo" class="java.lang.Boolean"/>
+<field name="salarioBase" class="java.math.BigDecimal"/>
+<variable name="ACTIVOS" class="java.lang.Integer" calculation="Sum">
+	<variableExpression><![CDATA[Boolean.TRUE.equals($F{activo}) ? 1 : 0]]></variableExpression>
+	<initialValueExpression><![CDATA[0]]></initialValueExpression>
+</variable>
+<variable name="TOTAL_SALARIOS" class="java.math.BigDecimal" calculation="Sum">
+	<variableExpression><![CDATA[Boolean.TRUE.equals($F{activo}) && $F{salarioBase} != null ? $F{salarioBase} : java.math.BigDecimal.ZERO]]></variableExpression>
+	<initialValueExpression><![CDATA[java.math.BigDecimal.ZERO]]></initialValueExpression>
+</variable>
+
+<title>
+	<band height="70">
+<line>
+	<reportElement x="0" y="0" width="539" height="1" forecolor="#000000"/>
+	<graphicElement><pen lineWidth="2.0"/></graphicElement>
+</line>
+<textField isBlankWhenNull="true">
+	<reportElement x="0" y="10" width="296" height="24" forecolor="#000000"/>
+	<textElement textAlignment="Left" verticalAlignment="Middle">
+		<font fontName="SansSerif" size="18" isBold="true" isItalic="false"/>
+	</textElement>
+	<textFieldExpression><![CDATA[$P{TALLER_NOMBRE}]]></textFieldExpression>
+</textField>
+<textField isBlankWhenNull="true">
+	<reportElement x="0" y="34" width="296" height="28" forecolor="#404040"/>
+	<textElement textAlignment="Left" verticalAlignment="Top">
+		<font fontName="SansSerif" size="8" isBold="false" isItalic="false"/>
+	</textElement>
+	<textFieldExpression><![CDATA[$P{TALLER_DATOS}]]></textFieldExpression>
+</textField>
+<textField isBlankWhenNull="true">
+	<reportElement x="296" y="10" width="242" height="22" forecolor="#000000"/>
+	<textElement textAlignment="Right" verticalAlignment="Middle">
+		<font fontName="SansSerif" size="14" isBold="true" isItalic="false"/>
+	</textElement>
+	<textFieldExpression><![CDATA[$P{TITULO}]]></textFieldExpression>
+</textField>
+<textField isBlankWhenNull="true">
+	<reportElement x="296" y="32" width="242" height="14" forecolor="#000000">
+		<printWhenExpression><![CDATA[$P{SUBTITULO} != null]]></printWhenExpression>
+	</reportElement>
+	<textElement textAlignment="Right" verticalAlignment="Middle">
+		<font fontName="SansSerif" size="9" isBold="false" isItalic="false"/>
+	</textElement>
+	<textFieldExpression><![CDATA[$P{SUBTITULO}]]></textFieldExpression>
+</textField>
+<textField isBlankWhenNull="true">
+	<reportElement x="296" y="46" width="242" height="12" forecolor="#404040"/>
+	<textElement textAlignment="Right" verticalAlignment="Middle">
+		<font fontName="SansSerif" size="7" isBold="false" isItalic="false"/>
+	</textElement>
+	<textFieldExpression><![CDATA["Emitido: " + $P{FECHA_EMISION}]]></textFieldExpression>
+</textField>
+<line>
+	<reportElement x="0" y="64" width="539" height="1" forecolor="#000000"/>
+	<graphicElement><pen lineWidth="1.0"/></graphicElement>
+</line>
+	</band>
+</title>
+<columnHeader>
+	<band height="20">
+<line>
+	<reportElement x="0" y="0" width="539" height="1" forecolor="#000000"/>
+	<graphicElement><pen lineWidth="1.0"/></graphicElement>
+</line>
+<line>
+	<reportElement x="0" y="19" width="539" height="1" forecolor="#000000"/>
+	<graphicElement><pen lineWidth="1.0"/></graphicElement>
+</line>
+<staticText>
+	<reportElement x="0" y="0" width="140" height="20" forecolor="#000000"/>
+	<box leftPadding="3" rightPadding="3"/>
+	<textElement textAlignment="Left" verticalAlignment="Middle">
+		<font fontName="SansSerif" size="8" isBold="true"/>
+	</textElement>
+	<text><![CDATA[Nombre]]></text>
+</staticText>
+<staticText>
+	<reportElement x="140" y="0" width="65" height="20" forecolor="#000000"/>
+	<box leftPadding="3" rightPadding="3"/>
+	<textElement textAlignment="Left" verticalAlignment="Middle">
+		<font fontName="SansSerif" size="8" isBold="true"/>
+	</textElement>
+	<text><![CDATA[CI]]></text>
+</staticText>
+<staticText>
+	<reportElement x="205" y="0" width="85" height="20" forecolor="#000000"/>
+	<box leftPadding="3" rightPadding="3"/>
+	<textElement textAlignment="Left" verticalAlignment="Middle">
+		<font fontName="SansSerif" size="8" isBold="true"/>
+	</textElement>
+	<text><![CDATA[Cargo]]></text>
+</staticText>
+<staticText>
+	<reportElement x="290" y="0" width="70" height="20" forecolor="#000000"/>
+	<box leftPadding="3" rightPadding="3"/>
+	<textElement textAlignment="Left" verticalAlignment="Middle">
+		<font fontName="SansSerif" size="8" isBold="true"/>
+	</textElement>
+	<text><![CDATA[Telefono]]></text>
+</staticText>
+<staticText>
+	<reportElement x="360" y="0" width="62" height="20" forecolor="#000000"/>
+	<box leftPadding="3" rightPadding="3"/>
+	<textElement textAlignment="Center" verticalAlignment="Middle">
+		<font fontName="SansSerif" size="8" isBold="true"/>
+	</textElement>
+	<text><![CDATA[Admision]]></text>
+</staticText>
+<staticText>
+	<reportElement x="422" y="0" width="42" height="20" forecolor="#000000"/>
+	<box leftPadding="3" rightPadding="3"/>
+	<textElement textAlignment="Center" verticalAlignment="Middle">
+		<font fontName="SansSerif" size="8" isBold="true"/>
+	</textElement>
+	<text><![CDATA[Activo]]></text>
+</staticText>
+<staticText>
+	<reportElement x="464" y="0" width="75" height="20" forecolor="#000000"/>
+	<box leftPadding="3" rightPadding="3"/>
+	<textElement textAlignment="Right" verticalAlignment="Middle">
+		<font fontName="SansSerif" size="8" isBold="true"/>
+	</textElement>
+	<text><![CDATA[Salario (Gs.)]]></text>
+</staticText>
+	</band>
+</columnHeader>
+<detail>
+	<band height="18" splitType="Prevent">
+<textField isBlankWhenNull="true" textAdjust="StretchHeight">
+	<reportElement x="0" y="0" width="140" height="18" forecolor="#000000" stretchType="RelativeToTallestObject"/>
+	<box topPadding="2" leftPadding="3" bottomPadding="2" rightPadding="3"><bottomPen lineWidth="0.5" lineColor="#A0A0A0"/></box>
+	<textElement textAlignment="Left" verticalAlignment="Top">
+		<font fontName="SansSerif" size="9" isBold="false" isItalic="false"/>
+	</textElement>
+	<textFieldExpression><![CDATA[$F{nombre}]]></textFieldExpression>
+</textField>
+<textField isBlankWhenNull="true" textAdjust="StretchHeight">
+	<reportElement x="140" y="0" width="65" height="18" forecolor="#000000" stretchType="RelativeToTallestObject"/>
+	<box topPadding="2" leftPadding="3" bottomPadding="2" rightPadding="3"><bottomPen lineWidth="0.5" lineColor="#A0A0A0"/></box>
+	<textElement textAlignment="Left" verticalAlignment="Top">
+		<font fontName="SansSerif" size="9" isBold="false" isItalic="false"/>
+	</textElement>
+	<textFieldExpression><![CDATA[$F{documento}]]></textFieldExpression>
+</textField>
+<textField isBlankWhenNull="true" textAdjust="StretchHeight">
+	<reportElement x="205" y="0" width="85" height="18" forecolor="#000000" stretchType="RelativeToTallestObject"/>
+	<box topPadding="2" leftPadding="3" bottomPadding="2" rightPadding="3"><bottomPen lineWidth="0.5" lineColor="#A0A0A0"/></box>
+	<textElement textAlignment="Left" verticalAlignment="Top">
+		<font fontName="SansSerif" size="9" isBold="false" isItalic="false"/>
+	</textElement>
+	<textFieldExpression><![CDATA[$F{cargo}]]></textFieldExpression>
+</textField>
+<textField isBlankWhenNull="true" textAdjust="StretchHeight">
+	<reportElement x="290" y="0" width="70" height="18" forecolor="#000000" stretchType="RelativeToTallestObject"/>
+	<box topPadding="2" leftPadding="3" bottomPadding="2" rightPadding="3"><bottomPen lineWidth="0.5" lineColor="#A0A0A0"/></box>
+	<textElement textAlignment="Left" verticalAlignment="Top">
+		<font fontName="SansSerif" size="9" isBold="false" isItalic="false"/>
+	</textElement>
+	<textFieldExpression><![CDATA[$F{telefono}]]></textFieldExpression>
+</textField>
+<textField isBlankWhenNull="true" textAdjust="StretchHeight">
+	<reportElement x="360" y="0" width="62" height="18" forecolor="#000000" stretchType="RelativeToTallestObject"/>
+	<box topPadding="2" leftPadding="3" bottomPadding="2" rightPadding="3"><bottomPen lineWidth="0.5" lineColor="#A0A0A0"/></box>
+	<textElement textAlignment="Center" verticalAlignment="Top">
+		<font fontName="SansSerif" size="9" isBold="false" isItalic="false"/>
+	</textElement>
+	<textFieldExpression><![CDATA[$F{fechaAdmision}]]></textFieldExpression>
+</textField>
+<textField isBlankWhenNull="true" textAdjust="StretchHeight">
+	<reportElement x="422" y="0" width="42" height="18" forecolor="#000000" stretchType="RelativeToTallestObject"/>
+	<box topPadding="2" leftPadding="3" bottomPadding="2" rightPadding="3"><bottomPen lineWidth="0.5" lineColor="#A0A0A0"/></box>
+	<textElement textAlignment="Center" verticalAlignment="Top">
+		<font fontName="SansSerif" size="9" isBold="false" isItalic="false"/>
+	</textElement>
+	<textFieldExpression><![CDATA[Boolean.TRUE.equals($F{activo}) ? "Si" : "No"]]></textFieldExpression>
+</textField>
+<textField isBlankWhenNull="true" textAdjust="StretchHeight" pattern="#,##0">
+	<reportElement x="464" y="0" width="75" height="18" forecolor="#000000" stretchType="RelativeToTallestObject"/>
+	<box topPadding="2" leftPadding="3" bottomPadding="2" rightPadding="3"><bottomPen lineWidth="0.5" lineColor="#A0A0A0"/></box>
+	<textElement textAlignment="Right" verticalAlignment="Top">
+		<font fontName="SansSerif" size="9" isBold="false" isItalic="false"/>
+	</textElement>
+	<textFieldExpression><![CDATA[$F{salarioBase}]]></textFieldExpression>
+</textField>
+	</band>
+</detail>
+<pageFooter>
+	<band height="20">
+		<line>
+	<reportElement x="0" y="2" width="539" height="1" forecolor="#A0A0A0"/>
+	<graphicElement><pen lineWidth="0.75"/></graphicElement>
+</line>
+		<textField isBlankWhenNull="true">
+	<reportElement x="0" y="5" width="269" height="12" forecolor="#404040"/>
+	<textElement textAlignment="Left" verticalAlignment="Middle">
+		<font fontName="SansSerif" size="7" isBold="false" isItalic="false"/>
+	</textElement>
+	<textFieldExpression><![CDATA[$P{TALLER_NOMBRE} + " - " + $P{TITULO}]]></textFieldExpression>
+</textField>
+		<textField isBlankWhenNull="true">
+	<reportElement x="269" y="5" width="229" height="12" forecolor="#404040"/>
+	<textElement textAlignment="Right" verticalAlignment="Middle">
+		<font fontName="SansSerif" size="7" isBold="false" isItalic="false"/>
+	</textElement>
+	<textFieldExpression><![CDATA["Pagina " + $V{PAGE_NUMBER} + " de"]]></textFieldExpression>
+</textField>
+		<textField isBlankWhenNull="true" evaluationTime="Report">
+	<reportElement x="499" y="5" width="40" height="12" forecolor="#404040"/>
+	<textElement textAlignment="Left" verticalAlignment="Middle">
+		<font fontName="SansSerif" size="7" isBold="false" isItalic="false"/>
+	</textElement>
+	<textFieldExpression><![CDATA[" " + $V{PAGE_NUMBER}]]></textFieldExpression>
+</textField>
+	</band>
+</pageFooter>
+<summary>
+	<band height="30" splitType="Prevent">
+<textField isBlankWhenNull="true">
+	<reportElement x="0" y="8" width="260" height="16" forecolor="#000000"/>
+	<textElement textAlignment="Left" verticalAlignment="Middle">
+		<font fontName="SansSerif" size="9" isBold="true" isItalic="false"/>
+	</textElement>
+	<textFieldExpression><![CDATA["Total de empleados: " + $V{REPORT_COUNT} + "  (activos: " + $V{ACTIVOS} + ")"]]></textFieldExpression>
+</textField>
+<textField isBlankWhenNull="true">
+	<reportElement x="199" y="8" width="220" height="16" forecolor="#000000"/>
+	<textElement textAlignment="Right" verticalAlignment="Middle">
+		<font fontName="SansSerif" size="9" isBold="true" isItalic="false"/>
+	</textElement>
+	<textFieldExpression><![CDATA["Suma de salarios (empleados activos):"]]></textFieldExpression>
+</textField>
+<textField isBlankWhenNull="true" pattern="#,##0">
+	<reportElement x="419" y="8" width="120" height="16" forecolor="#000000"/>
+	<box rightPadding="3"/>
+	<textElement textAlignment="Right" verticalAlignment="Middle">
+		<font fontName="SansSerif" size="9" isBold="true" isItalic="false"/>
+	</textElement>
+	<textFieldExpression><![CDATA[$V{TOTAL_SALARIOS}]]></textFieldExpression>
+</textField>
+	</band>
+</summary>
+</jasperReport>

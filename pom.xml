@@ -11,6 +11,16 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
+  <!-- Algunas dependencias de JasperReports (ej. la version de OpenPDF que
+       usa Jaspersoft) pueden no estar en Maven Central; Maven busca primero
+       en Central y, si no encuentra, en este repositorio oficial de Jaspersoft. -->
+  <repositories>
+    <repository>
+      <id>jaspersoft-third-party</id>
+      <url>https://jaspersoft.jfrog.io/jaspersoft/third-party-ce-artifacts/</url>
+    </repository>
+  </repositories>
+
   <dependencies>
 
     <!-- Hibernate -->
@@ -36,11 +46,13 @@
       <version>2.0.12</version>
     </dependency>
 
-    <!-- permitirá generar y exportar reportes dinámicos del sistema en formatos como PDF -->
+    <!-- Reportes (listados, recibos, orden de servicio, cierre mensual).
+         Linea 6.x: compatible con Java 21 y con Jaspersoft Studio. Los
+         .jrxml estan en src/main/resources/reportes/ -->
     <dependency>
-      <groupId>jasperreports</groupId>
+      <groupId>net.sf.jasperreports</groupId>
       <artifactId>jasperreports</artifactId>
-      <version>3.5.3</version>
+      <version>6.21.3</version>
       <scope>compile</scope>
     </dependency>
 

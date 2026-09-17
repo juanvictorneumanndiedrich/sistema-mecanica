@@ -2,19 +2,18 @@ package com.mecanica.view;
 
 import com.mecanica.controller.ItemOrdenServicioController;
 import com.mecanica.controller.OrdenDeServicioController;
+import com.mecanica.controller.ReporteController;
 import com.mecanica.enums.EstadoOrdenServicio;
 import com.mecanica.enums.TipoItemOrdenServicio;
-import com.mecanica.model.Maquinario;
 import com.mecanica.model.ItemOrdenServicio;
+import com.mecanica.model.Maquinario;
 import com.mecanica.model.OrdenDeServicio;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
 import java.awt.*;
-import java.awt.print.PrinterException;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
-import java.text.MessageFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -30,8 +29,9 @@ import java.util.List;
  * Si la OS ya esta CONCLUIDA o CANCELADA los items quedan de solo lectura
  * -- no tiene sentido seguir agregando repuestos/servicios a una OS cerrada.
  *
- * La impresion (boton IMPRIMIR) genera solo la via fisica de la tabla de
- * items para la firma del cliente -- no se guarda ninguna firma digital.
+ * La impresion (boton IMPRIMIR) abre la via impresa de la OS en JasperReports
+ * (ver ReporteController.ordenServicio), con lugar para la firma del cliente
+ * -- no se guarda ninguna firma digital.
  */
 public class ItemOrdenServicioDialog extends JDialog {
 
@@ -40,6 +40,7 @@ public class ItemOrdenServicioDialog extends JDialog {
 
     private final ItemOrdenServicioController itemController = new ItemOrdenServicioController();
     private final OrdenDeServicioController ordenDeServicioController = new OrdenDeServicioController();
+    private final ReporteController reporteController = new ReporteController();
 
     private final TablaItemsModel modeloItems = new TablaItemsModel();
     private final JTable tablaItems = new JTable(modeloItems);
@@ -484,14 +485,9 @@ public class ItemOrdenServicioDialog extends JDialog {
     // ---------------------------------------------------------------- Impresion (solo via fisica, sin firma digital)
 
     private void onImprimir() {
-        try {
-            MessageFormat encabezado = new MessageFormat(
-                    "Orden de Servicio N° " + os.getNumero() + " - " + os.getCliente().getNombre());
-            tablaItems.print(JTable.PrintMode.FIT_WIDTH, encabezado, null);
-        } catch (PrinterException e) {
-            JOptionPane.showMessageDialog(this,
-                    "No fue posible imprimir: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
+        OrdenDeServicio actual = os;
+        VisorReporte.mostrar(this, "Orden de Servicio N° " + actual.getNumero(),
+                () -> reporteController.ordenServicio(actual));
     }
 
     // ---------------------------------------------------------------- Modelo de tabla

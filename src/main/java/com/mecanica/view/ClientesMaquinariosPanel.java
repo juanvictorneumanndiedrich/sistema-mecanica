@@ -3,6 +3,7 @@ package com.mecanica.view;
 import com.mecanica.controller.ChequePreDatadoController;
 import com.mecanica.controller.ClienteController;
 import com.mecanica.controller.MaquinarioController;
+import com.mecanica.controller.ReporteController;
 import com.mecanica.model.Cliente;
 import com.mecanica.model.Maquinario;
 
@@ -30,6 +31,7 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
     private final ClienteController clienteController = new ClienteController();
     private final MaquinarioController maquinarioController = new MaquinarioController();
     private final ChequePreDatadoController chequeController = new ChequePreDatadoController();
+    private final ReporteController reporteController = new ReporteController();
 
     private final TablaClientesModel modeloClientes = new TablaClientesModel();
     private final TablaMaquinariosModel modeloMaquinarios = new TablaMaquinariosModel();
@@ -93,7 +95,14 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
 
         BotonPlano botonNuevoCliente = new BotonPlano("NUEVO CLIENTE");
         botonNuevoCliente.addActionListener(e -> onNuevoCliente());
-        encabezado.add(botonNuevoCliente, BorderLayout.EAST);
+        BotonPlano botonImprimirClientes = new BotonPlano("IMPRIMIR LISTADO", Paleta.GRIS_TEXTO, Paleta.GRIS_TEXTO.brighter());
+        botonImprimirClientes.addActionListener(e ->
+                VisorReporte.mostrar(this, "Listado de Clientes", reporteController::listadoClientes));
+        JPanel accionesEncabezado = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        accionesEncabezado.setOpaque(false);
+        accionesEncabezado.add(botonImprimirClientes);
+        accionesEncabezado.add(botonNuevoCliente);
+        encabezado.add(accionesEncabezado, BorderLayout.EAST);
         panel.add(encabezado, BorderLayout.NORTH);
 
         JPanel centro = new JPanel(new BorderLayout(0, 8));

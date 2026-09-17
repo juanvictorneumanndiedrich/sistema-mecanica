@@ -27,4 +27,16 @@ public class CierreMensualDAO extends AbstractGenericDAO<CierreMensual, Long> {
             return query.list();
         }
     }
+
+    /** Un cierre con sus detalles por socio ya cargados (para imprimir el acerto). */
+    public CierreMensual buscarConDetalles(Long id) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            String hql = "SELECT DISTINCT c FROM CierreMensual c "
+                    + "LEFT JOIN FETCH c.detalles d LEFT JOIN FETCH d.socio WHERE c.id = :id";
+            Query<CierreMensual> query = session.createQuery(hql, CierreMensual.class);
+            query.setParameter("id", id);
+            List<CierreMensual> resultado = query.list();
+            return resultado.isEmpty() ? null : resultado.get(0);
+        }
+    }
 }

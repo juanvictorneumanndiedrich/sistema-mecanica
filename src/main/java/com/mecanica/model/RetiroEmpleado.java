@@ -43,6 +43,16 @@ public class RetiroEmpleado {
 
     private LocalDate fechaLiquidacion;
 
+    /**
+     * Pago de salario (MovimientoFinanciero SALARIO_EMPLEADO) en el que este
+     * retiro fue descontado -- null mientras no fue liquidado. Sirve para
+     * reimprimir el recibo de un pago antiguo con sus descuentos exactos
+     * (ver EmpleadoController.pagarSalario y ReporteController.reciboSalario).
+     */
+    @ManyToOne
+    @JoinColumn(name = "pago_salario_id")
+    private MovimientoFinanciero pagoSalario;
+
     public RetiroEmpleado() {
     }
 
@@ -108,5 +118,13 @@ public class RetiroEmpleado {
 
     public void setFechaLiquidacion(LocalDate fechaLiquidacion) {
         this.fechaLiquidacion = fechaLiquidacion;
+    }
+
+    public MovimientoFinanciero getPagoSalario() {
+        return pagoSalario;
+    }
+
+    public void setPagoSalario(MovimientoFinanciero pagoSalario) {
+        this.pagoSalario = pagoSalario;
     }
 }

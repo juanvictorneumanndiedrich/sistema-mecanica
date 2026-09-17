@@ -3,6 +3,7 @@ package com.mecanica.view;
 import com.mecanica.controller.ChequePreDatadoController;
 import com.mecanica.controller.CierreMensualController;
 import com.mecanica.controller.MovimientoFinancieroController;
+import com.mecanica.controller.ReporteController;
 import com.mecanica.enums.TipoMovimientoFinanciero;
 import com.mecanica.model.ChequePreDatado;
 import com.mecanica.model.CierreMensual;
@@ -58,6 +59,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
     private final MovimientoFinancieroController movimientoFinancieroController = new MovimientoFinancieroController();
     private final ChequePreDatadoController chequeController = new ChequePreDatadoController();
     private final CierreMensualController cierreMensualController = new CierreMensualController();
+    private final ReporteController reporteController = new ReporteController();
 
     private final TablaMovimientosModel modeloMovimientos = new TablaMovimientosModel();
     private final JTable tablaMovimientos = new JTable(modeloMovimientos);
@@ -80,6 +82,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
     private final JLabel labelErrorCierre = new JLabel(" ");
 
     private final TablaHistoricoCierresModel modeloHistoricoCierres = new TablaHistoricoCierresModel();
+    private final BotonPlano botonImprimirCierre = new BotonPlano("IMPRIMIR ACERTO", Paleta.GRIS_TEXTO, Paleta.GRIS_TEXTO.brighter());
     private final JTable tablaHistoricoCierres = new JTable(modeloHistoricoCierres);
     private final JTextArea areaReporteCierre = new JTextArea();
 
@@ -180,6 +183,14 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         panelBoton.add(botonFiltrar, BorderLayout.CENTER);
         panel.add(panelBoton);
 
+        BotonPlano botonImprimirMovimientos = new BotonPlano("IMPRIMIR", Paleta.GRIS_TEXTO, Paleta.GRIS_TEXTO.brighter());
+        botonImprimirMovimientos.addActionListener(e -> onImprimirMovimientos());
+        JPanel panelBotonImprimir = new JPanel(new BorderLayout());
+        panelBotonImprimir.setOpaque(false);
+        panelBotonImprimir.add(Box.createVerticalStrut(18), BorderLayout.NORTH);
+        panelBotonImprimir.add(botonImprimirMovimientos, BorderLayout.CENTER);
+        panel.add(panelBotonImprimir);
+
         return panel;
     }
 
@@ -256,7 +267,14 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         pie.add(labelErrorCheques, BorderLayout.WEST);
 
         botonConfirmarCheque.addActionListener(e -> onConfirmarCheque());
-        pie.add(botonConfirmarCheque, BorderLayout.EAST);
+        BotonPlano botonImprimirCheques = new BotonPlano("IMPRIMIR LISTADO", Paleta.GRIS_TEXTO, Paleta.GRIS_TEXTO.brighter());
+        botonImprimirCheques.addActionListener(e ->
+                VisorReporte.mostrar(this, "Cheques Pendientes", reporteController::chequesPendientes));
+        JPanel accionesCheques = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        accionesCheques.setOpaque(false);
+        accionesCheques.add(botonImprimirCheques);
+        accionesCheques.add(botonConfirmarCheque);
+        pie.add(accionesCheques, BorderLayout.EAST);
         panel.add(pie, BorderLayout.SOUTH);
 
         return panel;
@@ -353,6 +371,14 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         estilizarAreaReporte(areaReporteCierre);
         centro.add(new JScrollPane(areaReporteCierre), BorderLayout.CENTER);
         panel.add(centro, BorderLayout.CENTER);
+
+        JPanel pieHistorico = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        pieHistorico.setOpaque(false);
+        pieHistorico.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
+        botonImprimirCierre.setEnabled(false);
+        botonImprimirCierre.addActionListener(e -> onImprimirCierre());
+        pieHistorico.add(botonImprimirCierre);
+        panel.add(pieHistorico, BorderLayout.SOUTH);
 
         return panel;
     }
@@ -649,6 +675,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
 
     private void onVerHistoricoCierre() {
         int filaSeleccionada = tablaHistoricoCierres.getSelectedRow();
+        botonImprimirCierre.setEnabled(filaSeleccionada >= 0);
         if (filaSeleccionada < 0) {
             return;
         }
@@ -723,8 +750,56 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
                 cargarPendientesCierre();
                 cargarHistoricoCierres();
                 buscarMovimientos();
+
+                CierreMensual cerrado = resultado;
+                int imprimir = JOptionPane.showConfirmDialog(FinancieroPanel.this,
+                        "Mes cerrado. Desea imprimir el documento del acerto de los socios?",
+                        "Imprimir acerto", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+                if (imprimir == JOptionPane.YES_OPTION) {
+                    VisorReporte.mostrar(FinancieroPanel.this, "Cierre Mensual",
+                            () -> reporteController.cierreMensual(cerrado));
+                }
             }
         }.execute();
+    }
+
+    private void onImprimirCierre() {
+        int filaSeleccionada = tablaHistoricoCierres.getSelectedRow();
+        if (filaSeleccionada < 0) {
+            return;
+        }
+        CierreMensual seleccionado = modeloHistoricoCierres.getCierre(
+                tablaHistoricoCierres.convertRowIndexToModel(filaSeleccionada));
+        VisorReporte.mostrar(this, "Cierre Mensual", () -> reporteController.cierreMensual(seleccionado));
+    }
+
+    /** Imprime los movimientos con los mismos filtros de la pantalla (DESDE, HASTA y TIPO). */
+    private void onImprimirMovimientos() {
+        labelError.setText(" ");
+        LocalDate inicio;
+        LocalDate fin;
+        try {
+            inicio = LocalDate.parse(campoFechaInicio.getText().trim(), FORMATO_FECHA);
+            fin = LocalDate.parse(campoFechaFin.getText().trim(), FORMATO_FECHA);
+        } catch (DateTimeParseException e) {
+            labelError.setText("Ingrese las fechas en formato dd/mm/aaaa.");
+            return;
+        }
+        if (inicio.isAfter(fin)) {
+            labelError.setText("La fecha DESDE no puede ser posterior a la fecha HASTA.");
+            return;
+        }
+        String tipoSeleccionado = (String) comboTipo.getSelectedItem();
+        TipoMovimientoFinanciero tipo;
+        if (TIPO_INGRESO.equals(tipoSeleccionado)) {
+            tipo = TipoMovimientoFinanciero.ENTRADA;
+        } else if (TIPO_EGRESO.equals(tipoSeleccionado)) {
+            tipo = TipoMovimientoFinanciero.SALIDA;
+        } else {
+            tipo = null;
+        }
+        VisorReporte.mostrar(this, "Movimientos Financieros",
+                () -> reporteController.movimientosFinancieros(inicio, fin, tipo));
     }
 
     private String formatearReporteCierre(CierreMensual cierre) {
