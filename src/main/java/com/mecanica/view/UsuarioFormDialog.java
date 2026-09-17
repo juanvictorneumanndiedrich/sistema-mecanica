@@ -1,10 +1,13 @@
 package com.mecanica.view;
 
+import com.mecanica.enums.Permiso;
 import com.mecanica.model.Usuario;
 import com.mecanica.util.Validaciones;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.EnumMap;
+import java.util.Map;
 
 /**
  * Dialogo modal para crear o editar un Usuario del sistema. Si se abre con
@@ -13,10 +16,12 @@ import java.awt.*;
  * usuario (null), crea uno nuevo y en ese caso pide ademas la contrasena
  * inicial, ya que un usuario nuevo necesita una para poder ingresar.
  *
- * Los permisos son 6 casillas independientes, una por cada area de la
- * navegacion principal -- las mismas 6 que MainView lee de Usuario para
- * armar el menu lateral. No hay roles ni grupos: cada usuario tiene su
- * propia combinacion de permisos.
+ * Los permisos salen del enum Permiso: primero las 6 areas de la navegacion
+ * principal (las mismas que MainView lee para armar el menu lateral) y
+ * despues los permisos de accion, agrupados. Una casilla de accion que
+ * depende de un area (ej. "Ver la pestana Socios") queda deshabilitada
+ * mientras el area este desmarcada. No hay roles ni grupos: cada usuario
+ * tiene su propia combinacion de permisos.
  *
  * La contrasena NUNCA se toca desde aca al editar un usuario existente
  * (el campo ni siquiera se muestra): para cambiarla existe una accion
@@ -29,12 +34,8 @@ public class UsuarioFormDialog extends JDialog {
     private final JPasswordField campoClaveInicial = new JPasswordField();
     private final JCheckBox checkActivo = new JCheckBox("Activo", true);
 
-    private final JCheckBox checkClientesMaquinarios = new JCheckBox("Clientes y Maquinarios");
-    private final JCheckBox checkOrdenesServicio = new JCheckBox("Ordenes de Servicio");
-    private final JCheckBox checkComprasProveedores = new JCheckBox("Compras y Proveedores");
-    private final JCheckBox checkFinanciero = new JCheckBox("Financiero");
-    private final JCheckBox checkEmpleadosSocios = new JCheckBox("Empleados y Socios");
-    private final JCheckBox checkUsuarios = new JCheckBox("Usuarios y Permisos");
+    /** Una casilla por permiso, en el orden del enum. */
+    private final Map<Permiso, JCheckBox> checksPermisos = new EnumMap<>(Permiso.class);
 
     private final JLabel labelError = new JLabel(" ");
 
@@ -68,8 +69,8 @@ public class UsuarioFormDialog extends JDialog {
     }
 
     private void armarPantalla() {
-        setSize(460, esNuevo ? 660 : 600);
-        setResizable(false);
+        setSize(520, 760);
+        setResizable(true);
         setLayout(new BorderLayout());
 
         JPanel formulario = new JPanel(new GridBagLayout());
@@ -94,22 +95,29 @@ public class UsuarioFormDialog extends JDialog {
         gbc.insets = new Insets(14, 0, 0, 0);
         formulario.add(checkActivo, gbc);
 
-        JLabel labelPermisos = new JLabel("PERMISOS POR AREA");
-        labelPermisos.setForeground(Paleta.GRIS_TEXTO);
-        labelPermisos.setFont(new Font("Segoe UI", Font.BOLD, 11));
-        gbc.gridy = fila++;
-        gbc.insets = new Insets(16, 0, 0, 0);
-        formulario.add(labelPermisos, gbc);
-
-        JCheckBox[] checks = {
-                checkClientesMaquinarios, checkOrdenesServicio, checkComprasProveedores,
-                checkFinanciero, checkEmpleadosSocios, checkUsuarios
-        };
-        for (int i = 0; i < checks.length; i++) {
-            estilizarCheck(checks[i]);
+        Permiso.Grupo grupoActual = null;
+        for (Permiso permiso : Permiso.values()) {
+            if (permiso.getGrupo() != grupoActual) {
+                grupoActual = permiso.getGrupo();
+                JLabel labelGrupo = new JLabel("PERMISOS - " + grupoActual.getTitulo());
+                labelGrupo.setForeground(Paleta.GRIS_TEXTO);
+                labelGrupo.setFont(new Font("Segoe UI", Font.BOLD, 11));
+                gbc.gridy = fila++;
+                gbc.insets = new Insets(16, 0, 2, 0);
+                formulario.add(labelGrupo, gbc);
+            }
+            JCheckBox check = new JCheckBox(permiso.getEtiqueta());
+            estilizarCheck(check);
+            checksPermisos.put(permiso, check);
             gbc.gridy = fila++;
-            gbc.insets = new Insets(i == 0 ? 4 : 2, 0, 0, 0);
-            formulario.add(checks[i], gbc);
+            gbc.insets = new Insets(2, permiso.esArea() ? 0 : 14, 0, 0);
+            formulario.add(check, gbc);
+        }
+        // Las casillas de accion que dependen de un area se habilitan solo con el area marcada.
+        for (Permiso permiso : Permiso.values()) {
+            if (permiso.esArea()) {
+                checksPermisos.get(permiso).addActionListener(e -> actualizarDependencias());
+            }
         }
 
         labelError.setForeground(Paleta.ROJO_ERROR);
@@ -164,17 +172,25 @@ public class UsuarioFormDialog extends JDialog {
 
     private void cargarDatos() {
         if (usuario == null) {
+            actualizarDependencias();
             return;
         }
         campoNombre.setText(usuario.getNombre());
         campoLogin.setText(usuario.getLogin());
         checkActivo.setSelected(usuario.isActivo());
-        checkClientesMaquinarios.setSelected(usuario.isPermisoClientesMaquinarios());
-        checkOrdenesServicio.setSelected(usuario.isPermisoOrdenesServicio());
-        checkComprasProveedores.setSelected(usuario.isPermisoComprasProveedores());
-        checkFinanciero.setSelected(usuario.isPermisoFinanciero());
-        checkEmpleadosSocios.setSelected(usuario.isPermisoEmpleadosSocios());
-        checkUsuarios.setSelected(usuario.isPermisoUsuarios());
+        for (Permiso permiso : Permiso.values()) {
+            checksPermisos.get(permiso).setSelected(usuario.tiene(permiso));
+        }
+        actualizarDependencias();
+    }
+
+    private void actualizarDependencias() {
+        for (Permiso permiso : Permiso.values()) {
+            Permiso area = permiso.area();
+            if (area != null) {
+                checksPermisos.get(permiso).setEnabled(checksPermisos.get(area).isSelected());
+            }
+        }
     }
 
     private void onGuardar() {
@@ -219,12 +235,9 @@ public class UsuarioFormDialog extends JDialog {
         usuario.setNombre(nombre);
         usuario.setLogin(login);
         usuario.setActivo(checkActivo.isSelected());
-        usuario.setPermisoClientesMaquinarios(checkClientesMaquinarios.isSelected());
-        usuario.setPermisoOrdenesServicio(checkOrdenesServicio.isSelected());
-        usuario.setPermisoComprasProveedores(checkComprasProveedores.isSelected());
-        usuario.setPermisoFinanciero(checkFinanciero.isSelected());
-        usuario.setPermisoEmpleadosSocios(checkEmpleadosSocios.isSelected());
-        usuario.setPermisoUsuarios(checkUsuarios.isSelected());
+        for (Permiso permiso : Permiso.values()) {
+            usuario.setPermiso(permiso, checksPermisos.get(permiso).isSelected());
+        }
 
         claveInicial = claveIngresada;
         confirmado = true;

@@ -2,10 +2,12 @@ package com.mecanica.controller;
 
 import com.mecanica.dao.OrdenDeServicioDAO;
 import com.mecanica.enums.EstadoOrdenServicio;
+import com.mecanica.enums.Permiso;
 import com.mecanica.model.Cliente;
 import com.mecanica.model.Maquinario;
 import com.mecanica.model.OrdenDeServicio;
 import com.mecanica.util.HibernateUtil;
+import com.mecanica.util.Sesion;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 
@@ -21,6 +23,7 @@ import java.util.List;
 public class OrdenDeServicioController {
 
     private final OrdenDeServicioDAO ordemDeServicoDAO = new OrdenDeServicioDAO();
+    private final AuditoriaController auditoria = new AuditoriaController();
 
     /**
      * Abre una nueva OS, generando el proximo numero secuencial automaticamente.
@@ -72,6 +75,8 @@ public class OrdenDeServicioController {
             session.merge(clienteGerenciado);
 
             tx.commit();
+            auditoria.registrar("OS CERRADA", "OS Nº " + osGerenciada.getNumero() + " - "
+                    + clienteGerenciado.getNombre() + " - " + AuditoriaController.gs(osGerenciada.getValorTotal()));
             return osGerenciada;
         } catch (RuntimeException e) {
             if (tx != null && tx.isActive()) {
@@ -82,9 +87,13 @@ public class OrdenDeServicioController {
     }
 
     public OrdenDeServicio cancelar(OrdenDeServicio os) {
+        Sesion.exigir(Permiso.CANCELAR_OS);
         os.setEstado(EstadoOrdenServicio.CANCELADA);
         os.setFechaCierre(LocalDate.now());
-        return ordemDeServicoDAO.guardar(os);
+        OrdenDeServicio guardada = ordemDeServicoDAO.guardar(os);
+        auditoria.registrar("OS CANCELADA", "OS Nº " + os.getNumero()
+                + (os.getCliente() == null ? "" : " - " + os.getCliente().getNombre()));
+        return guardada;
     }
 
     public OrdenDeServicio buscarPorId(Long id) {

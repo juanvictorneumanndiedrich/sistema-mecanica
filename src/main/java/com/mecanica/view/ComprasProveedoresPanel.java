@@ -5,8 +5,10 @@ import com.mecanica.controller.CompraController;
 import com.mecanica.controller.ProveedorController;
 import com.mecanica.controller.ReporteController;
 import com.mecanica.enums.EstadoCompra;
+import com.mecanica.enums.Permiso;
 import com.mecanica.model.Compra;
 import com.mecanica.model.Proveedor;
+import com.mecanica.util.Sesion;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
@@ -85,6 +87,12 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
         botonRetirarSaldoProveedor.setEnabled(false);
         actualizarEstadoBotonesDetalle();
         actualizarEstadoBotonesCompra();
+
+        // Permisos (ver enums.Permiso): lo que el usuario no puede usar ni aparece.
+        boolean eliminar = Sesion.tiene(Permiso.ELIMINAR_REGISTROS);
+        botonEliminarProveedor.setVisible(eliminar);
+        botonEliminarCompra.setVisible(eliminar);
+        botonRetirarSaldoProveedor.setVisible(Sesion.tiene(Permiso.RETIRAR_SALDO));
 
         cargarProveedores(null);
     }

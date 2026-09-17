@@ -5,10 +5,12 @@ import com.mecanica.controller.ReporteController;
 import com.mecanica.controller.RetiroEmpleadoController;
 import com.mecanica.controller.RetiroSocioController;
 import com.mecanica.controller.SocioController;
+import com.mecanica.enums.Permiso;
 import com.mecanica.model.Empleado;
 import com.mecanica.model.MovimientoFinanciero;
 import com.mecanica.model.RetiroEmpleado;
 import com.mecanica.model.Socio;
+import com.mecanica.util.Sesion;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
@@ -64,6 +66,7 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
     private final JTable tablaEmpleados = new JTable(modeloEmpleados);
     private final JTable tablaSocios = new JTable(modeloSocios);
 
+    private final BotonPlano botonNuevoEmpleado = new BotonPlano("NUEVO EMPLEADO");
     private final BotonPlano botonEditarEmpleado = new BotonPlano("EDITAR", Paleta.AZUL, Paleta.AZUL_CLARO);
     private final BotonPlano botonEliminarEmpleado = new BotonPlano("ELIMINAR", Paleta.ROJO_ERROR, Paleta.ROJO_ERROR.brighter());
     private final BotonPlano botonRetiroEmpleado = new BotonPlano("REGISTRAR RETIRO", Paleta.AZUL, Paleta.AZUL_CLARO);
@@ -88,14 +91,30 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
         pestanias.setFont(new Font("Segoe UI", Font.BOLD, 13));
         pestanias.setBackground(Paleta.GRIS_FONDO);
         pestanias.addTab("Empleados", armarTabEmpleados());
-        pestanias.addTab("Socios", armarTabSocios());
+        if (Sesion.tiene(Permiso.SOCIOS)) {
+            pestanias.addTab("Socios", armarTabSocios());
+        }
         add(pestanias, BorderLayout.CENTER);
 
+        aplicarPermisos();
         actualizarEstadoBotonesEmpleado();
         actualizarEstadoBotonesSocio();
 
         cargarEmpleados();
         cargarSocios();
+    }
+
+    /**
+     * Oculta lo que el usuario logueado no puede usar (ver enums.Permiso).
+     * La pestana Socios y el panel de salario directamente no se arman.
+     */
+    private void aplicarPermisos() {
+        boolean editarEmpleados = Sesion.tiene(Permiso.EDITAR_EMPLEADOS);
+        botonNuevoEmpleado.setVisible(editarEmpleados);
+        botonEditarEmpleado.setVisible(editarEmpleados);
+        botonEliminarEmpleado.setVisible(editarEmpleados);
+        botonRetiroEmpleado.setVisible(Sesion.tiene(Permiso.RETIROS_EMPLEADO));
+        botonRecibos.setVisible(Sesion.tiene(Permiso.PAGAR_SALARIO));
     }
 
     /** Recarga empleados y socios (las dos pestanias) al entrar en esta area. */
@@ -120,7 +139,6 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
         titulo.setForeground(Paleta.AZUL_OSCURO);
         encabezado.add(titulo, BorderLayout.WEST);
 
-        BotonPlano botonNuevoEmpleado = new BotonPlano("NUEVO EMPLEADO");
         botonNuevoEmpleado.addActionListener(e -> onNuevoEmpleado());
         BotonPlano botonImprimirEmpleados = new BotonPlano("IMPRIMIR LISTADO", Paleta.GRIS_TEXTO, Paleta.GRIS_TEXTO.brighter());
         botonImprimirEmpleados.addActionListener(e ->
@@ -132,6 +150,11 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
         encabezado.add(accionesEncabezado, BorderLayout.EAST);
         panel.add(encabezado, BorderLayout.NORTH);
 
+        if (!Sesion.tiene(Permiso.PAGAR_SALARIO)) {
+            // sin permiso de salario: solo la lista, sin el panel de calcular/pagar
+            panel.add(armarListaEmpleados(), BorderLayout.CENTER);
+            return panel;
+        }
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
                 armarListaEmpleados(), armarReporteEmpleados());
         splitPane.setResizeWeight(0.5);

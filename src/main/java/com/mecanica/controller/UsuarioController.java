@@ -6,7 +6,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
 import com.mecanica.dao.UsuarioDAO;
+import com.mecanica.enums.Permiso;
 import com.mecanica.model.Usuario;
+import com.mecanica.util.Sesion;
 
 /**
  * Controller de Usuario: registro, edicion, permisos y autenticacion
@@ -15,10 +17,15 @@ import com.mecanica.model.Usuario;
  */
 public class UsuarioController {
 
+    /** Clave con la que se crea el usuario "admin" inicial; hay que cambiarla al entrar. */
+    private static final String CLAVE_PROVISORIA = "admin";
+
     private final UsuarioDAO usuarioDAO = new UsuarioDAO();
+    private final AuditoriaController auditoria = new AuditoriaController();
 
     /** Registra un usuario nuevo, recibiendo la clave en texto plano para generar el hash. */
     public Usuario registrar(Usuario usuario, String claveEnTextoPlano) {
+        Sesion.exigir(Permiso.USUARIOS);
         validarDatosBasicos(usuario);
         if (claveEnTextoPlano == null || claveEnTextoPlano.isBlank()) {
             throw new IllegalArgumentException("La clave es obligatoria.");
@@ -27,7 +34,9 @@ public class UsuarioController {
             throw new IllegalArgumentException("Ya existe un usuario con ese login.");
         }
         usuario.setClave(hashClave(claveEnTextoPlano));
-        return usuarioDAO.guardar(usuario);
+        Usuario guardado = usuarioDAO.guardar(usuario);
+        auditoria.registrar("USUARIO CREADO", guardado.getNombre() + " (" + guardado.getLogin() + ")");
+        return guardado;
     }
 
     /**
@@ -49,13 +58,11 @@ public class UsuarioController {
         admin.setNombre("Administrador");
         admin.setLogin("admin");
         admin.setActivo(true);
-        admin.setPermisoClientesMaquinarios(true);
-        admin.setPermisoOrdenesServicio(true);
-        admin.setPermisoComprasProveedores(true);
-        admin.setPermisoFinanciero(true);
-        admin.setPermisoEmpleadosSocios(true);
-        admin.setPermisoUsuarios(true);
-        registrar(admin, "admin");
+        for (Permiso permiso : Permiso.values()) {
+            admin.setPermiso(permiso, true);
+        }
+        admin.setClave(hashClave(CLAVE_PROVISORIA));
+        usuarioDAO.guardar(admin);
         return true;
     }
 
@@ -64,16 +71,58 @@ public class UsuarioController {
      * tocar la clave (para eso, ver cambiarClave).
      */
     public Usuario actualizarDatos(Usuario usuario) {
+        Sesion.exigir(Permiso.USUARIOS);
         validarDatosBasicos(usuario);
-        return usuarioDAO.guardar(usuario);
+
+        // Proteccion anti-bloqueo: nadie puede dejar el sistema sin
+        // administrador, ni quitarse a si mismo el acceso a esta pantalla.
+        boolean quedaAdministrador = usuario.isActivo() && usuario.isPermisoUsuarios();
+        if (Sesion.esUsuarioActual(usuario)) {
+            if (!usuario.isActivo()) {
+                throw new IllegalArgumentException("No puede desactivar su propio usuario.");
+            }
+            if (!usuario.isPermisoUsuarios()) {
+                throw new IllegalArgumentException(
+                        "No puede quitarse a si mismo el permiso de Usuarios y Permisos.");
+            }
+        }
+        if (!quedaAdministrador && !hayOtroAdministrador(usuario)) {
+            throw new IllegalArgumentException(
+                    "Debe quedar al menos un usuario activo con permiso de Usuarios y Permisos.");
+        }
+
+        Usuario guardado = usuarioDAO.guardar(usuario);
+        if (Sesion.esUsuarioActual(guardado)) {
+            // los cambios de permisos propios valen para esta sesion (menu: al volver a entrar)
+            Sesion.iniciar(guardado);
+        }
+        auditoria.registrar("USUARIO EDITADO", guardado.getNombre() + " (" + guardado.getLogin() + ")"
+                + (guardado.isActivo() ? "" : " - inactivo") + " - permisos: " + resumenPermisos(guardado));
+        return guardado;
     }
 
     public void cambiarClave(Usuario usuario, String nuevaClaveEnTextoPlano) {
+        if (!Sesion.esUsuarioActual(usuario)) {
+            Sesion.exigir(Permiso.USUARIOS);
+        }
         if (nuevaClaveEnTextoPlano == null || nuevaClaveEnTextoPlano.isBlank()) {
             throw new IllegalArgumentException("La nueva clave es obligatoria.");
         }
+        if (nuevaClaveEnTextoPlano.length() < 6) {
+            throw new IllegalArgumentException("La clave debe tener al menos 6 caracteres.");
+        }
         usuario.setClave(hashClave(nuevaClaveEnTextoPlano));
         usuarioDAO.guardar(usuario);
+        auditoria.registrar("CLAVE CAMBIADA", usuario.getNombre() + " (" + usuario.getLogin() + ")");
+    }
+
+    /**
+     * true si el usuario todavia tiene la clave provisoria "admin" (la del
+     * usuario inicial). En ese caso, al entrar, el sistema obliga a cambiarla
+     * antes de abrir la ventana principal.
+     */
+    public boolean usaClaveProvisoria(Usuario usuario) {
+        return usuario != null && hashClave(CLAVE_PROVISORIA).equals(usuario.getClave());
     }
 
     /** Se usa en la pantalla de login. Devuelve null si login/clave no coinciden o el usuario esta inactivo. */
@@ -98,7 +147,41 @@ public class UsuarioController {
     }
 
     public void eliminar(Usuario usuario) {
+        Sesion.exigir(Permiso.USUARIOS);
+        if (Sesion.esUsuarioActual(usuario)) {
+            throw new IllegalArgumentException("No puede eliminar su propio usuario.");
+        }
+        if (!hayOtroAdministrador(usuario)) {
+            throw new IllegalArgumentException(
+                    "Debe quedar al menos un usuario activo con permiso de Usuarios y Permisos.");
+        }
         usuarioDAO.eliminar(usuario);
+        auditoria.registrar("USUARIO ELIMINADO", usuario.getNombre() + " (" + usuario.getLogin() + ")");
+    }
+
+    /** true si existe OTRO usuario (distinto del dado) activo y con permiso de Usuarios y Permisos. */
+    private boolean hayOtroAdministrador(Usuario usuario) {
+        for (Usuario otro : usuarioDAO.listarActivos()) {
+            boolean esElMismo = usuario.getId() != null && usuario.getId().equals(otro.getId());
+            if (!esElMismo && otro.isPermisoUsuarios()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Lista corta de los permisos marcados, para el registro de actividad. */
+    public static String resumenPermisos(Usuario usuario) {
+        StringBuilder texto = new StringBuilder();
+        for (Permiso permiso : Permiso.values()) {
+            if (usuario.tiene(permiso)) {
+                if (texto.length() > 0) {
+                    texto.append(", ");
+                }
+                texto.append(permiso.name().toLowerCase().replace('_', ' '));
+            }
+        }
+        return texto.length() == 0 ? "ninguno" : texto.toString();
     }
 
     private void validarDatosBasicos(Usuario usuario) {

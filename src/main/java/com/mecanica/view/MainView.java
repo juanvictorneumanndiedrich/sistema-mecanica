@@ -1,5 +1,6 @@
 package com.mecanica.view;
 
+import com.mecanica.controller.AuditoriaController;
 import com.mecanica.model.Usuario;
 
 import javax.swing.*;
@@ -205,8 +206,30 @@ public class MainView extends JFrame {
 
     /** Cierra esta ventana y vuelve al login. */
     private void salir() {
+        ControlInactividad.detener();
+        new AuditoriaController().registrar("CIERRE DE SESION", null);
         dispose();
         Main.iniciarSesion();
+    }
+
+    /**
+     * Llamado por ControlInactividad despues de ControlInactividad.MINUTOS
+     * minutos sin uso: cierra TODAS las ventanas del sistema (incluidos
+     * dialogos abiertos y visores de reportes) y vuelve al login.
+     */
+    void cerrarPorInactividad() {
+        new AuditoriaController().registrar("SESION CERRADA POR INACTIVIDAD",
+                "Sin uso durante " + ControlInactividad.MINUTOS + " minutos");
+        for (Window ventana : Window.getWindows()) {
+            ventana.dispose();
+        }
+        SwingUtilities.invokeLater(() -> {
+            JOptionPane.showMessageDialog(null,
+                    "La sesion se cerro por " + ControlInactividad.MINUTOS + " minutos sin uso.\n"
+                            + "Ingrese de nuevo para continuar.",
+                    "Sesion cerrada", JOptionPane.INFORMATION_MESSAGE);
+            Main.iniciarSesion();
+        });
     }
 
     /**

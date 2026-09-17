@@ -2,10 +2,12 @@ package com.mecanica.controller;
 
 import com.mecanica.dao.ClienteDAO;
 import com.mecanica.enums.CategoriaMovimientoFinanciero;
+import com.mecanica.enums.Permiso;
 import com.mecanica.enums.TipoMovimientoFinanciero;
 import com.mecanica.model.Cliente;
 import com.mecanica.model.MovimientoFinanciero;
 import com.mecanica.util.HibernateUtil;
+import com.mecanica.util.Sesion;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 
@@ -24,6 +26,7 @@ import java.util.List;
 public class ClienteController {
 
     private final ClienteDAO clienteDAO = new ClienteDAO();
+    private final AuditoriaController auditoria = new AuditoriaController();
 
     public Cliente guardar(Cliente cliente) {
         validar(cliente);
@@ -43,7 +46,9 @@ public class ClienteController {
     }
 
     public void eliminar(Cliente cliente) {
+        Sesion.exigir(Permiso.ELIMINAR_REGISTROS);
         clienteDAO.eliminar(cliente);
+        auditoria.registrar("CLIENTE ELIMINADO", cliente.getNombre());
     }
 
     /**
@@ -115,6 +120,9 @@ public class ClienteController {
             session.persist(movimiento);
 
             tx.commit();
+            auditoria.registrar("PAGO DE CLIENTE", clienteGerenciado.getNombre() + " - pago "
+                    + AuditoriaController.gs(valorPagado)
+                    + (descuento.compareTo(BigDecimal.ZERO) > 0 ? " + descuento " + AuditoriaController.gs(descuento) : ""));
         } catch (RuntimeException e) {
             if (tx != null && tx.isActive()) {
                 tx.rollback();
@@ -133,6 +141,7 @@ public class ClienteController {
      * disponible.
      */
     public void retirarSaldo(Cliente cliente, BigDecimal valor, String descripcion) {
+        Sesion.exigir(Permiso.RETIRAR_SALDO);
         if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("El valor a retirar debe ser mayor que cero.");
         }
@@ -163,6 +172,8 @@ public class ClienteController {
             session.persist(movimiento);
 
             tx.commit();
+            auditoria.registrar("SALDO RETIRADO (CLIENTE)",
+                    clienteGerenciado.getNombre() + " - " + AuditoriaController.gs(valor));
         } catch (RuntimeException e) {
             if (tx != null && tx.isActive()) {
                 tx.rollback();

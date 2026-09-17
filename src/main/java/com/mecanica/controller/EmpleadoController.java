@@ -4,11 +4,13 @@ import com.mecanica.dao.EmpleadoDAO;
 import com.mecanica.dao.MovimientoFinancieroDAO;
 import com.mecanica.dao.RetiroEmpleadoDAO;
 import com.mecanica.enums.CategoriaMovimientoFinanciero;
+import com.mecanica.enums.Permiso;
 import com.mecanica.enums.TipoMovimientoFinanciero;
 import com.mecanica.model.Empleado;
 import com.mecanica.model.MovimientoFinanciero;
 import com.mecanica.model.RetiroEmpleado;
 import com.mecanica.util.HibernateUtil;
+import com.mecanica.util.Sesion;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
@@ -28,14 +30,20 @@ import java.util.List;
 public class EmpleadoController {
 
     private final EmpleadoDAO funcionarioDAO = new EmpleadoDAO();
+    private final AuditoriaController auditoria = new AuditoriaController();
     private final RetiroEmpleadoDAO retiradaFuncionarioDAO = new RetiroEmpleadoDAO();
     private final MovimientoFinancieroDAO movimientoDAO = new MovimientoFinancieroDAO();
 
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public Empleado guardar(Empleado empleado) {
+        Sesion.exigir(Permiso.EDITAR_EMPLEADOS);
         validar(empleado);
-        return funcionarioDAO.guardar(empleado);
+        boolean nuevo = empleado.getId() == null;
+        Empleado guardado = funcionarioDAO.guardar(empleado);
+        auditoria.registrar(nuevo ? "EMPLEADO CREADO" : "EMPLEADO EDITADO", guardado.getNombre()
+                + " - salario base " + AuditoriaController.gs(guardado.getSalarioBase()));
+        return guardado;
     }
 
     public Empleado buscarPorId(Long id) {
@@ -55,7 +63,9 @@ public class EmpleadoController {
     }
 
     public void eliminar(Empleado empleado) {
+        Sesion.exigir(Permiso.EDITAR_EMPLEADOS);
         funcionarioDAO.eliminar(empleado);
+        auditoria.registrar("EMPLEADO ELIMINADO", empleado.getNombre());
     }
 
     /**
@@ -89,6 +99,7 @@ public class EmpleadoController {
      * descontado y el valor liquido) es lo que se imprime como recibo.
      */
     public ResultadoCierreMensual pagarSalario(Empleado empleado, LocalDate inicio, LocalDate fin) {
+        Sesion.exigir(Permiso.PAGAR_SALARIO);
         if (empleado == null) {
             throw new IllegalArgumentException("Debe seleccionar un empleado.");
         }
@@ -137,6 +148,9 @@ public class EmpleadoController {
             BigDecimal valorLiquido = salarioBase.subtract(totalDescontado);
 
             tx.commit();
+            auditoria.registrar("SALARIO PAGADO", movimiento.getDescripcion() + " - salario "
+                    + AuditoriaController.gs(salarioBase) + ", descuentos " + AuditoriaController.gs(totalDescontado)
+                    + ", liquido " + AuditoriaController.gs(valorLiquido));
             ResultadoCierreMensual resultado =
                     new ResultadoCierreMensual(empleado, new ArrayList<>(retiradas), totalDescontado, valorLiquido);
             resultado.pagoSalario = movimiento;

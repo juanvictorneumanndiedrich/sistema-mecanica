@@ -2,9 +2,11 @@ package com.mecanica.controller;
 
 import com.mecanica.dao.CompraDAO;
 import com.mecanica.dao.ProveedorDAO;
+import com.mecanica.enums.Permiso;
 import com.mecanica.model.Compra;
 import com.mecanica.model.Proveedor;
 import com.mecanica.util.HibernateUtil;
+import com.mecanica.util.Sesion;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 
@@ -33,6 +35,7 @@ import java.util.Set;
 public class CompraController {
 
     private final CompraDAO compraDAO = new CompraDAO();
+    private final AuditoriaController auditoria = new AuditoriaController();
     private final ProveedorDAO proveedorDAO = new ProveedorDAO();
 
     /**
@@ -60,6 +63,7 @@ public class CompraController {
      * ya no existe. Una nota ya pagada no se puede borrar.
      */
     public void eliminar(Compra compra) {
+        Sesion.exigir(Permiso.ELIMINAR_REGISTROS);
         verificarEditable(compra);
 
         Transaction tx = null;
@@ -83,6 +87,8 @@ public class CompraController {
             session.remove(compraGerenciada);
 
             tx.commit();
+            auditoria.registrar("NOTA DE COMPRA ELIMINADA", "Nota Nº " + compraGerenciada.getNumero() + " de "
+                    + proveedorGerenciado.getNombre() + " - " + AuditoriaController.gs(valorNota));
         } catch (RuntimeException e) {
             if (tx != null && tx.isActive()) {
                 tx.rollback();

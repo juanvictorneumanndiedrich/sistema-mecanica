@@ -1,6 +1,7 @@
 package com.mecanica.view;
 
 import com.mecanica.controller.UsuarioController;
+import com.mecanica.enums.Permiso;
 import com.mecanica.model.Usuario;
 
 import javax.swing.*;
@@ -66,7 +67,13 @@ public class UsuariosPanel extends JPanel implements PanelActualizable {
 
         BotonPlano botonNuevo = new BotonPlano("NUEVO USUARIO");
         botonNuevo.addActionListener(e -> onNuevoUsuario());
-        encabezado.add(botonNuevo, BorderLayout.EAST);
+        BotonPlano botonActividad = new BotonPlano("REGISTRO DE ACTIVIDAD", Paleta.GRIS_TEXTO, Paleta.GRIS_TEXTO.brighter());
+        botonActividad.addActionListener(e -> new RegistroActividadDialog(ventana()).setVisible(true));
+        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        acciones.setOpaque(false);
+        acciones.add(botonActividad);
+        acciones.add(botonNuevo);
+        encabezado.add(acciones, BorderLayout.EAST);
 
         return encabezado;
     }
@@ -208,8 +215,8 @@ public class UsuariosPanel extends JPanel implements PanelActualizable {
                 if (error != null) {
                     JOptionPane.showMessageDialog(UsuariosPanel.this,
                             error.getMessage(), "No fue posible guardar", JOptionPane.ERROR_MESSAGE);
-                    return;
                 }
+                // recarga siempre: si no se guardo, la tabla vuelve a mostrar lo que hay en la base
                 cargarUsuarios();
             }
         }.execute();
@@ -236,8 +243,8 @@ public class UsuariosPanel extends JPanel implements PanelActualizable {
                 if (error != null) {
                     JOptionPane.showMessageDialog(UsuariosPanel.this,
                             error.getMessage(), "No fue posible guardar", JOptionPane.ERROR_MESSAGE);
-                    return;
                 }
+                // recarga siempre: si no se guardo, la tabla vuelve a mostrar lo que hay en la base
                 cargarUsuarios();
             }
         }.execute();
@@ -273,9 +280,11 @@ public class UsuariosPanel extends JPanel implements PanelActualizable {
             protected void done() {
                 setHabilitado(true);
                 if (error != null) {
+                    String mensaje = error instanceof IllegalArgumentException || error instanceof IllegalStateException
+                            ? error.getMessage()
+                            : "No fue posible eliminar: el usuario tiene registros vinculados.";
                     JOptionPane.showMessageDialog(UsuariosPanel.this,
-                            "No fue posible eliminar: el usuario tiene registros vinculados.",
-                            "No fue posible eliminar", JOptionPane.ERROR_MESSAGE);
+                            mensaje, "No fue posible eliminar", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
                 cargarUsuarios();
@@ -374,23 +383,24 @@ public class UsuariosPanel extends JPanel implements PanelActualizable {
 
         private String resumenPermisos(Usuario usuario) {
             StringBuilder resumen = new StringBuilder();
-            agregarSiTiene(resumen, usuario.isPermisoClientesMaquinarios(), "Clientes y Maquinarios");
-            agregarSiTiene(resumen, usuario.isPermisoOrdenesServicio(), "Ordenes de Servicio");
-            agregarSiTiene(resumen, usuario.isPermisoComprasProveedores(), "Compras y Proveedores");
-            agregarSiTiene(resumen, usuario.isPermisoFinanciero(), "Financiero");
-            agregarSiTiene(resumen, usuario.isPermisoEmpleadosSocios(), "Empleados y Socios");
-            agregarSiTiene(resumen, usuario.isPermisoUsuarios(), "Usuarios y Permisos");
-            return resumen.length() == 0 ? "Sin permisos" : resumen.toString();
-        }
-
-        private void agregarSiTiene(StringBuilder resumen, boolean tiene, String etiqueta) {
-            if (!tiene) {
-                return;
+            int acciones = 0;
+            for (Permiso permiso : Permiso.values()) {
+                if (!usuario.tiene(permiso)) {
+                    continue;
+                }
+                if (!permiso.esArea()) {
+                    acciones++;
+                    continue;
+                }
+                if (resumen.length() > 0) {
+                    resumen.append(", ");
+                }
+                resumen.append(permiso.getEtiqueta().replace(" (incluye el registro de actividad)", ""));
             }
-            if (resumen.length() > 0) {
-                resumen.append(", ");
+            if (resumen.length() == 0) {
+                return "Sin permisos";
             }
-            resumen.append(etiqueta);
+            return acciones == 0 ? resumen.toString() : resumen + "  (+" + acciones + " de accion)";
         }
     }
 }

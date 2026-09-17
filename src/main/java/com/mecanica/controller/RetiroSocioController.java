@@ -1,8 +1,10 @@
 package com.mecanica.controller;
 
 import com.mecanica.dao.RetiroSocioDAO;
+import com.mecanica.enums.Permiso;
 import com.mecanica.model.RetiroSocio;
 import com.mecanica.model.Socio;
+import com.mecanica.util.Sesion;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -17,8 +19,10 @@ import java.util.List;
 public class RetiroSocioController {
 
     private final RetiroSocioDAO retiradaSocioDAO = new RetiroSocioDAO();
+    private final AuditoriaController auditoria = new AuditoriaController();
 
     public RetiroSocio registrarRetirada(Socio socio, BigDecimal valor, LocalDate fecha, String observacion) {
+        Sesion.exigir(Permiso.SOCIOS);
         if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("El valor del retiro debe ser mayor que cero.");
         }
@@ -27,7 +31,10 @@ public class RetiroSocioController {
         retiro.setValor(valor);
         retiro.setFecha(fecha != null ? fecha : LocalDate.now());
         retiro.setObservacion(observacion);
-        return retiradaSocioDAO.guardar(retiro);
+        RetiroSocio guardado = retiradaSocioDAO.guardar(retiro);
+        auditoria.registrar("RETIRO DE SOCIO", socio.getNombre() + " - " + AuditoriaController.gs(valor)
+                + (observacion == null || observacion.isBlank() ? "" : " - " + observacion));
+        return guardado;
     }
 
     public List<RetiroSocio> listarPorSocioYPeriodo(Socio socio, LocalDate inicio, LocalDate fin) {

@@ -4,11 +4,13 @@ import com.mecanica.controller.ChequePreDatadoController;
 import com.mecanica.controller.CierreMensualController;
 import com.mecanica.controller.MovimientoFinancieroController;
 import com.mecanica.controller.ReporteController;
+import com.mecanica.enums.Permiso;
 import com.mecanica.enums.TipoMovimientoFinanciero;
 import com.mecanica.model.ChequePreDatado;
 import com.mecanica.model.CierreMensual;
 import com.mecanica.model.CierreSocioDetalle;
 import com.mecanica.model.MovimientoFinanciero;
+import com.mecanica.util.Sesion;
 
 import javax.swing.*;
 import javax.swing.event.ListSelectionListener;
@@ -109,7 +111,9 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         pestañas.setFont(new Font("Segoe UI", Font.BOLD, 13));
         pestañas.addTab("Movimientos", armarPestañaMovimientos());
         pestañas.addTab("Cheques Pendientes", armarPestañaCheques());
-        pestañas.addTab("Cierre Mensual", armarPestañaCierreMensual());
+        if (Sesion.tiene(Permiso.CIERRE_MENSUAL)) {
+            pestañas.addTab("Cierre Mensual", armarPestañaCierreMensual());
+        }
         add(pestañas, BorderLayout.CENTER);
 
         buscarMovimientos();
@@ -149,6 +153,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
 
         BotonPlano botonNuevoMovimiento = new BotonPlano("NUEVO MOVIMIENTO");
         botonNuevoMovimiento.addActionListener(e -> onNuevoMovimiento());
+        botonNuevoMovimiento.setVisible(Sesion.tiene(Permiso.MOVIMIENTO_MANUAL));
         encabezado.add(botonNuevoMovimiento, BorderLayout.EAST);
         panel.add(encabezado, BorderLayout.NORTH);
 

@@ -2,8 +2,10 @@ package com.mecanica.controller;
 
 import com.mecanica.dao.MovimientoFinancieroDAO;
 import com.mecanica.enums.CategoriaMovimientoFinanciero;
+import com.mecanica.enums.Permiso;
 import com.mecanica.enums.TipoMovimientoFinanciero;
 import com.mecanica.model.MovimientoFinanciero;
+import com.mecanica.util.Sesion;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -19,10 +21,12 @@ import java.util.List;
 public class MovimientoFinancieroController {
 
     private final MovimientoFinancieroDAO movimentoFinanceiroDAO = new MovimientoFinancieroDAO();
+    private final AuditoriaController auditoria = new AuditoriaController();
 
     /** Movimiento manual, fuera de los flujos automaticos (categoria OTRO). */
     public MovimientoFinanciero registrarMovimientoManual(TipoMovimientoFinanciero tipo, BigDecimal valor,
                                                           LocalDate fecha, String descripcion) {
+        Sesion.exigir(Permiso.MOVIMIENTO_MANUAL);
         if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("El valor del movimiento debe ser mayor que cero.");
         }
@@ -32,7 +36,9 @@ public class MovimientoFinancieroController {
         movimiento.setCategoria(CategoriaMovimientoFinanciero.OTRO);
         movimiento.setValor(valor);
         movimiento.setDescripcion(descripcion);
-        return movimentoFinanceiroDAO.guardar(movimiento);
+        MovimientoFinanciero guardado = movimentoFinanceiroDAO.guardar(movimiento);
+        auditoria.registrar("MOVIMIENTO MANUAL", tipo + " " + AuditoriaController.gs(valor) + " - " + descripcion);
+        return guardado;
     }
 
     public List<MovimientoFinanciero> listarPorPeriodo(LocalDate inicio, LocalDate fin) {

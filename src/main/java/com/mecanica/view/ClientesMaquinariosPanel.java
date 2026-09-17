@@ -4,8 +4,10 @@ import com.mecanica.controller.ChequePreDatadoController;
 import com.mecanica.controller.ClienteController;
 import com.mecanica.controller.MaquinarioController;
 import com.mecanica.controller.ReporteController;
+import com.mecanica.enums.Permiso;
 import com.mecanica.model.Cliente;
 import com.mecanica.model.Maquinario;
+import com.mecanica.util.Sesion;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
@@ -68,6 +70,12 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
         botonPagoCliente.setEnabled(false);
         botonRetirarSaldoCliente.setEnabled(false);
         actualizarEstadoBotonesMaquinario();
+
+        // Permisos (ver enums.Permiso): lo que el usuario no puede usar ni aparece.
+        boolean eliminar = Sesion.tiene(Permiso.ELIMINAR_REGISTROS);
+        botonEliminarCliente.setVisible(eliminar);
+        botonEliminarMaquinario.setVisible(eliminar);
+        botonRetirarSaldoCliente.setVisible(Sesion.tiene(Permiso.RETIRAR_SALDO));
 
         cargarClientes(null);
     }

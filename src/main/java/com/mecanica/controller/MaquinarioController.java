@@ -1,14 +1,17 @@
 package com.mecanica.controller;
 
 import com.mecanica.dao.MaquinarioDAO;
+import com.mecanica.enums.Permiso;
 import com.mecanica.model.Cliente;
 import com.mecanica.model.Maquinario;
+import com.mecanica.util.Sesion;
 
 import java.util.List;
 
 public class MaquinarioController {
 
     private final MaquinarioDAO maquinarioDAO = new MaquinarioDAO();
+    private final AuditoriaController auditoria = new AuditoriaController();
 
     public Maquinario guardar(Maquinario maquinario) {
         validar(maquinario);
@@ -28,7 +31,12 @@ public class MaquinarioController {
     }
 
     public void eliminar(Maquinario maquinario) {
+        Sesion.exigir(Permiso.ELIMINAR_REGISTROS);
         maquinarioDAO.eliminar(maquinario);
+        auditoria.registrar("MAQUINARIO ELIMINADO", maquinario.getTipo() + " "
+                + (maquinario.getMarca() == null ? "" : maquinario.getMarca()) + " "
+                + (maquinario.getModelo() == null ? "" : maquinario.getModelo())
+                + (maquinario.getCliente() == null ? "" : " - cliente " + maquinario.getCliente().getNombre()));
     }
 
     private void validar(Maquinario maquinario) {

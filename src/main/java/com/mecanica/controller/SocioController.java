@@ -1,7 +1,9 @@
 package com.mecanica.controller;
 
 import com.mecanica.dao.SocioDAO;
+import com.mecanica.enums.Permiso;
 import com.mecanica.model.Socio;
+import com.mecanica.util.Sesion;
 
 import java.util.List;
 
@@ -18,8 +20,10 @@ import java.util.List;
 public class SocioController {
 
     private final SocioDAO socioDAO = new SocioDAO();
+    private final AuditoriaController auditoria = new AuditoriaController();
 
     public Socio guardar(Socio socio) {
+        Sesion.exigir(Permiso.SOCIOS);
         validar(socio);
         return socioDAO.guardar(socio);
     }
@@ -37,7 +41,9 @@ public class SocioController {
     }
 
     public void eliminar(Socio socio) {
+        Sesion.exigir(Permiso.SOCIOS);
         socioDAO.eliminar(socio);
+        auditoria.registrar("SOCIO ELIMINADO", socio.getNombre());
     }
 
     private void validar(Socio socio) {

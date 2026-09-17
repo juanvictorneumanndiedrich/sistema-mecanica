@@ -3,8 +3,10 @@ package com.mecanica.view;
 import com.mecanica.controller.OrdenDeServicioController;
 import com.mecanica.controller.ReporteController;
 import com.mecanica.enums.EstadoOrdenServicio;
+import com.mecanica.enums.Permiso;
 import com.mecanica.model.Maquinario;
 import com.mecanica.model.OrdenDeServicio;
+import com.mecanica.util.Sesion;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
@@ -65,6 +67,8 @@ public class OrdenesServicioPanel extends JPanel implements PanelActualizable {
         add(new JScrollPane(tablaOrdenes), BorderLayout.CENTER);
 
         add(armarBotones(), BorderLayout.SOUTH);
+        // Permiso (ver enums.Permiso): sin el, el boton no aparece.
+        botonCancelar.setVisible(Sesion.tiene(Permiso.CANCELAR_OS));
 
         actualizarEstadoBotones();
         cargarOrdenes();

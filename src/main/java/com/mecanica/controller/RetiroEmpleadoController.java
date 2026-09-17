@@ -1,9 +1,11 @@
 package com.mecanica.controller;
 
+import com.mecanica.enums.Permiso;
 import com.mecanica.enums.TipoRetiroEmpleado;
 import com.mecanica.model.Empleado;
 import com.mecanica.model.RetiroEmpleado;
 import com.mecanica.dao.RetiroEmpleadoDAO;
+import com.mecanica.util.Sesion;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -19,9 +21,11 @@ import java.util.List;
 public class RetiroEmpleadoController {
 
     private final RetiroEmpleadoDAO retiradaFuncionarioDAO = new RetiroEmpleadoDAO();
+    private final AuditoriaController auditoria = new AuditoriaController();
 
     public RetiroEmpleado registrarRetirada(Empleado empleado, TipoRetiroEmpleado tipo,
                                                   BigDecimal valor, LocalDate fecha, String observacion) {
+        Sesion.exigir(Permiso.RETIROS_EMPLEADO);
         if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("El valor del retiro debe ser mayor que cero.");
         }
@@ -33,7 +37,10 @@ public class RetiroEmpleadoController {
         retiro.setValor(valor);
         retiro.setFecha(fechaFinal);
         retiro.setObservacion(observacion);
-        return retiradaFuncionarioDAO.guardar(retiro);
+        RetiroEmpleado guardado = retiradaFuncionarioDAO.guardar(retiro);
+        auditoria.registrar("RETIRO DE EMPLEADO", empleado.getNombre() + " - " + tipo + " "
+                + AuditoriaController.gs(valor) + (observacion == null || observacion.isBlank() ? "" : " - " + observacion));
+        return guardado;
     }
 
     public List<RetiroEmpleado> listarPorEmpleadoYPeriodo(Empleado empleado, LocalDate inicio, LocalDate fin) {

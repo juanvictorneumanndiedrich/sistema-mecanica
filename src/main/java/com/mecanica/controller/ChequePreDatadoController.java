@@ -31,6 +31,7 @@ import java.util.List;
 public class ChequePreDatadoController {
 
     private final ChequePreDatadoDAO chequeDAO = new ChequePreDatadoDAO();
+    private final AuditoriaController auditoria = new AuditoriaController();
 
     /**
      * Cheque pre-datado recibido de un Cliente: ya descuenta su saldo
@@ -86,6 +87,8 @@ public class ChequePreDatadoController {
             session.persist(cheque);
 
             tx.commit();
+            auditoria.registrar("CHEQUE PRE-DATADO DE CLIENTE", clienteGerenciado.getNombre() + " - "
+                    + AuditoriaController.gs(valorCheque) + " vence " + fechaVencimiento);
         } catch (RuntimeException e) {
             if (tx != null && tx.isActive()) {
                 tx.rollback();
@@ -146,6 +149,8 @@ public class ChequePreDatadoController {
             session.persist(cheque);
 
             tx.commit();
+            auditoria.registrar("CHEQUE PRE-DATADO A PROVEEDOR", proveedorGerenciado.getNombre() + " - "
+                    + AuditoriaController.gs(valorCheque) + " vence " + fechaVencimiento);
         } catch (RuntimeException e) {
             if (tx != null && tx.isActive()) {
                 tx.rollback();
@@ -210,6 +215,7 @@ public class ChequePreDatadoController {
             session.persist(movimiento);
 
             tx.commit();
+            auditoria.registrar("CHEQUE CONFIRMADO", descripcionBase + " - " + AuditoriaController.gs(movimiento.getValor()));
         } catch (RuntimeException e) {
             if (tx != null && tx.isActive()) {
                 tx.rollback();

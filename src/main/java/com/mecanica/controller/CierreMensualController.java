@@ -2,6 +2,7 @@ package com.mecanica.controller;
 
 import com.mecanica.dao.CierreMensualDAO;
 import com.mecanica.dao.SocioDAO;
+import com.mecanica.enums.Permiso;
 import com.mecanica.enums.TipoMovimientoFinanciero;
 import com.mecanica.model.CierreMensual;
 import com.mecanica.model.CierreSocioDetalle;
@@ -9,6 +10,7 @@ import com.mecanica.model.MovimientoFinanciero;
 import com.mecanica.model.RetiroSocio;
 import com.mecanica.model.Socio;
 import com.mecanica.util.HibernateUtil;
+import com.mecanica.util.Sesion;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
@@ -37,6 +39,7 @@ public class CierreMensualController {
 
     private final CierreMensualDAO cierreDAO = new CierreMensualDAO();
     private final SocioDAO socioDAO = new SocioDAO();
+    private final AuditoriaController auditoria = new AuditoriaController();
 
     /** Historico de cierres ya hechos, del mas reciente al mas antiguo. */
     public List<CierreMensual> listarHistorico() {
@@ -44,6 +47,7 @@ public class CierreMensualController {
     }
 
     public CierreMensual cerrar(List<MovimientoFinanciero> seleccionados, String descripcion) {
+        Sesion.exigir(Permiso.CIERRE_MENSUAL);
         if (seleccionados == null || seleccionados.isEmpty()) {
             throw new IllegalArgumentException("Seleccione al menos un movimiento para el cierre.");
         }
@@ -108,6 +112,8 @@ public class CierreMensualController {
             }
 
             tx.commit();
+            auditoria.registrar("CIERRE MENSUAL", (descripcion == null || descripcion.isBlank() ? "" : descripcion + " - ")
+                    + seleccionados.size() + " movimientos - ganancia " + AuditoriaController.gs(gananciaTotal));
             return cierre;
         } catch (RuntimeException e) {
             if (tx != null && tx.isActive()) {
