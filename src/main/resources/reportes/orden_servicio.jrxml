@@ -360,13 +360,6 @@
 	</textElement>
 	<textFieldExpression><![CDATA[$P{VALOR_TOTAL}]]></textFieldExpression>
 </textField>
-		<staticText>
-	<reportElement x="0" y="62" width="539" height="26" forecolor="#404040"/>
-	<textElement textAlignment="Left" verticalAlignment="Top">
-		<font fontName="SansSerif" size="8" isBold="false"/>
-	</textElement>
-	<text><![CDATA[Declaro que recibi el servicio/maquinario detallado en esta orden y estoy de acuerdo con los valores indicados.]]></text>
-</staticText>
 		<line>
 	<reportElement x="20" y="120" width="220" height="1" forecolor="#000000"/>
 	<graphicElement><pen lineWidth="0.5"/></graphicElement>

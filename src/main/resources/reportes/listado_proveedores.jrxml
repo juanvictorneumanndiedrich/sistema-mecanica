@@ -239,13 +239,6 @@
 	</textElement>
 	<textFieldExpression><![CDATA[$V{TOTAL_CREDITO}]]></textFieldExpression>
 </textField>
-<textField isBlankWhenNull="true">
-	<reportElement x="0" y="48" width="539" height="12" forecolor="#404040"/>
-	<textElement textAlignment="Left" verticalAlignment="Middle">
-		<font fontName="SansSerif" size="7" isBold="false" isItalic="true"/>
-	</textElement>
-	<textFieldExpression><![CDATA["Saldo positivo (en negrita) = la mecanica debe al proveedor. Saldo negativo (-) = credito a favor de la mecanica."]]></textFieldExpression>
-</textField>
 	</band>
 </summary>
 </jasperReport>

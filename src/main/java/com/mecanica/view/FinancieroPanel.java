@@ -252,13 +252,6 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         panel.setOpaque(false);
         panel.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
 
-        JLabel explicacion = new JLabel(
-                "Cheques pre-datados (de clientes o para proveedores) que ya descontaron el saldo, "
-                        + "pero todavia no generaron el movimiento en Financiero -- eso pasa recien al confirmar.");
-        explicacion.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        explicacion.setForeground(Paleta.GRIS_TEXTO);
-        panel.add(explicacion, BorderLayout.NORTH);
-
         estilizarTabla(tablaCheques);
         tablaCheques.getColumnModel().getColumn(4).setCellRenderer(new ColorVencimientoRenderer(modeloCheques));
         panel.add(new JScrollPane(tablaCheques), BorderLayout.CENTER);
@@ -291,15 +284,6 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         JPanel panel = new JPanel(new BorderLayout(0, 8));
         panel.setOpaque(false);
         panel.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
-
-        JLabel explicacion = new JLabel(
-                "<html>Marque los movimientos que entran en el cierre de ahora -- no tienen que ser "
-                        + "todos los del mes: puede dejar alguno para el cierre siguiente, o incluir uno "
-                        + "de un mes anterior. Al cerrar, se calcula la ganancia y se reparte 50/50 entre "
-                        + "los socios (descontando lo que cada uno ya retiro).</html>");
-        explicacion.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        explicacion.setForeground(Paleta.GRIS_TEXTO);
-        panel.add(explicacion, BorderLayout.NORTH);
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
                 armarPanelPendientesCierre(), armarPanelHistoricoCierre());

@@ -201,7 +201,7 @@
 	</band>
 </pageFooter>
 <summary>
-	<band height="64" splitType="Prevent">
+	<band height="48" splitType="Prevent">
 <textField isBlankWhenNull="true">
 	<reportElement x="0" y="8" width="250" height="16" forecolor="#000000"/>
 	<textElement textAlignment="Left" verticalAlignment="Middle">
@@ -239,13 +239,6 @@
 	</textElement>
 	<textFieldExpression><![CDATA[$V{TOTAL_CREDITO}]]></textFieldExpression>
 </textField>
-<textField isBlankWhenNull="true">
-	<reportElement x="0" y="48" width="539" height="12" forecolor="#404040"/>
-	<textElement textAlignment="Left" verticalAlignment="Middle">
-		<font fontName="SansSerif" size="7" isBold="false" isItalic="true"/>
-	</textElement>
-	<textFieldExpression><![CDATA["Saldo positivo (en negrita) = el cliente debe a la mecanica. Saldo negativo (-) = credito a favor del cliente."]]></textFieldExpression>
-</textField>
-	</band>
+</band>
 </summary>
 </jasperReport>
