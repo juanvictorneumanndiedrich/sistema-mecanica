@@ -1,16 +1,14 @@
 package com.mecanica.controller;
 
+import com.mecanica.dao.MovimientoFinancieroDAO;
 import com.mecanica.dao.ProveedorDAO;
 import com.mecanica.enums.CategoriaMovimientoFinanciero;
 import com.mecanica.enums.Permiso;
 import com.mecanica.enums.TipoMovimientoFinanciero;
 import com.mecanica.model.MovimientoFinanciero;
 import com.mecanica.model.Proveedor;
-import com.mecanica.util.Errores;
-import com.mecanica.util.HibernateUtil;
+import com.mecanica.util.BD;
 import com.mecanica.util.Sesion;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -21,11 +19,12 @@ import java.util.List;
  * Controller de Proveedor. Las operaciones simples (CRUD) solo llaman al
  * ProveedorDAO; el pago al proveedor toca mas de una entidad a la vez
  * (saldo + MovimientoFinanciero) y por eso abre su propia
- * Session/Transaction aca -- mismo patron de ClienteController.
+ * transaccion aca -- mismo patron de ClienteController.
  */
 public class ProveedorController {
 
     private final ProveedorDAO fornecedorDAO = new ProveedorDAO();
+    private final MovimientoFinancieroDAO movimientoDAO = new MovimientoFinancieroDAO();
     private final AuditoriaController auditoria = new AuditoriaController();
 
     public Proveedor guardar(Proveedor proveedor) {
@@ -87,20 +86,16 @@ public class ProveedorController {
             throw new IllegalArgumentException("El descuento no puede ser negativo.");
         }
 
-        Transaction tx = null;
-        Session session = HibernateUtil.abrirSesion();
-        try {
-            tx = session.beginTransaction();
-
-            Proveedor proveedorGerenciado = session.get(Proveedor.class, proveedor.getId());
-            BigDecimal saldoAntes = proveedorGerenciado.getSaldo();
+        Proveedor proveedorGerenciado = BD.transaccion(conexion -> {
+            Proveedor gerenciado = fornecedorDAO.buscarPorId(conexion, proveedor.getId());
+            BigDecimal saldoAntes = gerenciado.getSaldo();
             BigDecimal deuda = saldoAntes.max(BigDecimal.ZERO);
             if (descuento.compareTo(deuda) > 0) {
                 throw new IllegalArgumentException(
                         "El descuento no puede ser mayor que la deuda con el proveedor (Gs. " + deuda + ").");
             }
-            proveedorGerenciado.setSaldo(saldoAntes.subtract(valorPagado).subtract(descuento));
-            session.merge(proveedorGerenciado);
+            gerenciado.setSaldo(saldoAntes.subtract(valorPagado).subtract(descuento));
+            fornecedorDAO.guardar(conexion, gerenciado);
 
             MovimientoFinanciero movimiento = new MovimientoFinanciero();
             movimiento.setFecha(LocalDate.now());
@@ -115,19 +110,13 @@ public class ProveedorController {
                 }
             }
             movimiento.setDescripcion(descripcion);
-            movimiento.setProveedor(proveedorGerenciado);
-            session.persist(movimiento);
-
-            tx.commit();
-            auditoria.registrar("PAGO A PROVEEDOR", proveedorGerenciado.getNombre() + " - pago "
-                    + AuditoriaController.gs(valorPagado)
-                    + (descuento.compareTo(BigDecimal.ZERO) > 0 ? " + descuento " + AuditoriaController.gs(descuento) : ""));
-        } catch (RuntimeException e) {
-            Errores.revertir(tx);
-            throw Errores.traducir(e);
-        } finally {
-            session.close();
-        }
+            movimiento.setProveedor(gerenciado);
+            movimientoDAO.guardar(conexion, movimiento);
+            return gerenciado;
+        });
+        auditoria.registrar("PAGO A PROVEEDOR", proveedorGerenciado.getNombre() + " - pago "
+                + AuditoriaController.gs(valorPagado)
+                + (descuento.compareTo(BigDecimal.ZERO) > 0 ? " + descuento " + AuditoriaController.gs(descuento) : ""));
     }
 
     /**
@@ -145,13 +134,9 @@ public class ProveedorController {
             throw new IllegalArgumentException("El valor a retirar debe ser mayor que cero.");
         }
 
-        Transaction tx = null;
-        Session session = HibernateUtil.abrirSesion();
-        try {
-            tx = session.beginTransaction();
-
-            Proveedor proveedorGerenciado = session.get(Proveedor.class, proveedor.getId());
-            BigDecimal credito = proveedorGerenciado.getSaldo().negate();
+        Proveedor proveedorGerenciado = BD.transaccion(conexion -> {
+            Proveedor gerenciado = fornecedorDAO.buscarPorId(conexion, proveedor.getId());
+            BigDecimal credito = gerenciado.getSaldo().negate();
             if (credito.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new IllegalArgumentException("La mecanica no tiene credito a favor con este proveedor.");
             }
@@ -159,8 +144,8 @@ public class ProveedorController {
                 throw new IllegalArgumentException(
                         "El valor a retirar no puede ser mayor que el credito disponible (Gs. " + credito + ").");
             }
-            proveedorGerenciado.setSaldo(proveedorGerenciado.getSaldo().add(valor));
-            session.merge(proveedorGerenciado);
+            gerenciado.setSaldo(gerenciado.getSaldo().add(valor));
+            fornecedorDAO.guardar(conexion, gerenciado);
 
             MovimientoFinanciero movimiento = new MovimientoFinanciero();
             movimiento.setFecha(LocalDate.now());
@@ -168,18 +153,12 @@ public class ProveedorController {
             movimiento.setCategoria(CategoriaMovimientoFinanciero.DEVOLUCION_PROVEEDOR);
             movimiento.setValor(valor);
             movimiento.setDescripcion(descripcion);
-            movimiento.setProveedor(proveedorGerenciado);
-            session.persist(movimiento);
-
-            tx.commit();
-            auditoria.registrar("SALDO RETIRADO (PROVEEDOR)",
-                    proveedorGerenciado.getNombre() + " - " + AuditoriaController.gs(valor));
-        } catch (RuntimeException e) {
-            Errores.revertir(tx);
-            throw Errores.traducir(e);
-        } finally {
-            session.close();
-        }
+            movimiento.setProveedor(gerenciado);
+            movimientoDAO.guardar(conexion, movimiento);
+            return gerenciado;
+        });
+        auditoria.registrar("SALDO RETIRADO (PROVEEDOR)",
+                proveedorGerenciado.getNombre() + " - " + AuditoriaController.gs(valor));
     }
 
     private void validar(Proveedor proveedor) {

@@ -1,39 +1,26 @@
 package com.mecanica.model;
 
 import com.mecanica.enums.TipoMaquinario;
-import jakarta.persistence.*;
 
 /**
  * Maquinario del cliente (camion, tractor, cosechadora, implemento
  * agricola, etc.) que pasa por la mecanica/torneria.
  */
-@Entity
-@Table(name = "maquinario")
 public class Maquinario {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "cliente_id", nullable = false)
     private Cliente cliente;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
     private TipoMaquinario tipo;
 
-    @Column(length = 60)
     private String marca;
 
-    @Column(length = 60)
     private String modelo;
 
     /** Placa (caminhoes) ou outro numero de identificacion (maquinas sem placa). */
-    @Column(name = "identificacion", length = 30)
     private String identificacion;
 
-    @Column(length = 200)
     private String observacion;
 
     public Maquinario() {

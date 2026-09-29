@@ -1,34 +1,23 @@
 package com.mecanica.model;
 
-import jakarta.persistence.*;
 import java.math.BigDecimal;
 
 /**
  * Item de una Compra: cada cosa comprada al proveedor en esa "notinha",
  * con su cantidad y precio. Mismo patron de ItemOrdenServicio.
  */
-@Entity
-@Table(name = "item_compra")
 public class ItemCompra {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "compra_id", nullable = false)
     private Compra compra;
 
-    @Column(nullable = false, length = 200)
     private String descripcion;
 
-    @Column(nullable = false, precision = 12, scale = 3)
     private BigDecimal cantidad = BigDecimal.ONE;
 
-    @Column(name = "valor_unitario", nullable = false, precision = 14, scale = 2)
     private BigDecimal valorUnitario;
 
-    @Column(name = "valor_total", nullable = false, precision = 14, scale = 2)
     private BigDecimal valorTotal;
 
     public ItemCompra() {

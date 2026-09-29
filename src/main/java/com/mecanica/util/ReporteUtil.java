@@ -27,8 +27,8 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * Los datos siempre llegan como una lista de Map (una fila = un Map, con las
  * claves iguales a los nombres de los field del .jrxml), armada por el
- * ReporteController -- asi el reporte no depende de las entidades de
- * Hibernate ni de sesiones abiertas.
+ * ReporteController -- asi el reporte no depende de las entidades ni de
+ * la conexion con la base.
  */
 public final class ReporteUtil {
 

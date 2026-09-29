@@ -1,7 +1,6 @@
 package com.mecanica.model;
 
 import com.mecanica.enums.EstadoOrdenServicio;
-import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -11,20 +10,13 @@ import java.util.List;
  * Orden de Servicio (OS). La impresion de la OS genera solo la via fisica para
  * la firma del cliente -- el sistema no guarda ninguna firma.
  */
-@Entity
-@Table(name = "orden_de_servicio")
 public class OrdenDeServicio {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     /** Numero sequencial exibido na via impressa. */
-    @Column(nullable = false, unique = true)
     private Long numero;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "cliente_id", nullable = false)
     private Cliente cliente;
 
     /**
@@ -33,27 +25,18 @@ public class OrdenDeServicio {
      * especifico del cliente -- en ese caso este campo queda en null y la OS
      * se trata como "servicio general".
      */
-    @ManyToOne
-    @JoinColumn(name = "maquinario_id")
     private Maquinario maquinario;
 
-    @Column(name = "fecha_apertura", nullable = false)
     private LocalDate fechaApertura;
 
-    @Column(name = "fecha_cierre")
     private LocalDate fechaCierre;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
     private EstadoOrdenServicio estado = EstadoOrdenServicio.ABIERTA;
 
-    @Column(name = "problema_reportado", length = 500)
     private String problemaReportado;
 
-    @Column(name = "valor_total", nullable = false, precision = 14, scale = 2)
     private BigDecimal valorTotal = BigDecimal.ZERO;
 
-    @OneToMany(mappedBy = "ordenDeServicio", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ItemOrdenServicio> items = new ArrayList<>();
 
     public OrdenDeServicio() {

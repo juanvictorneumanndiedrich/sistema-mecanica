@@ -1,6 +1,5 @@
 package com.mecanica.model;
 
-import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -22,12 +21,8 @@ import java.util.List;
  * de lo que ya se le pago al proveedor, porque el pago no es por nota
  * especifica (ver ProveedorController.registrarPagamento).
  */
-@Entity
-@Table(name = "compra")
 public class Compra {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     /**
@@ -35,20 +30,14 @@ public class Compra {
      * Controller (ver CompraController.abrir). No se edita a mano y no se
      * repite -- sirve para identificar la nota de compra.
      */
-    @Column(nullable = false, unique = true)
     private Long numero;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "proveedor_id", nullable = false)
     private Proveedor proveedor;
 
-    @Column(nullable = false)
     private LocalDate fecha;
 
-    @Column(name = "valor_total", nullable = false, precision = 14, scale = 2)
     private BigDecimal valorTotal = BigDecimal.ZERO;
 
-    @OneToMany(mappedBy = "compra", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ItemCompra> items = new ArrayList<>();
 
     public Compra() {

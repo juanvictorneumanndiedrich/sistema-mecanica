@@ -1,15 +1,16 @@
 package com.mecanica.controller;
 
+import com.mecanica.dao.CompraDAO;
 import com.mecanica.dao.ItemCompraDAO;
+import com.mecanica.dao.ProveedorDAO;
 import com.mecanica.model.Compra;
 import com.mecanica.model.ItemCompra;
 import com.mecanica.model.Proveedor;
-import com.mecanica.util.Errores;
-import com.mecanica.util.HibernateUtil;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
+import com.mecanica.util.BD;
 
 import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.List;
 
 /**
@@ -25,6 +26,8 @@ import java.util.List;
 public class ItemCompraController {
 
     private final ItemCompraDAO itemCompraDAO = new ItemCompraDAO();
+    private final CompraDAO compraDAO = new CompraDAO();
+    private final ProveedorDAO proveedorDAO = new ProveedorDAO();
     private final CompraController compraController = new CompraController();
 
     public ItemCompra agregar(Compra compra, String descripcion, BigDecimal cantidad, BigDecimal valorUnitario) {
@@ -40,61 +43,35 @@ public class ItemCompraController {
         compraController.verificarEditable(compra);
         BigDecimal valorItem = cantidad.multiply(valorUnitario);
 
-        Transaction tx = null;
-        Session session = HibernateUtil.abrirSesion();
-        try {
-            tx = session.beginTransaction();
-
-            Compra compraGerenciada = session.get(Compra.class, compra.getId());
-
+        return BD.transaccion(conexion -> {
+            Compra compraGerenciada = compraDAO.buscarPorId(conexion, compra.getId());
             ItemCompra item = new ItemCompra();
             item.setCompra(compraGerenciada);
             item.setDescripcion(descripcion);
             item.setCantidad(cantidad);
             item.setValorUnitario(valorUnitario);
             item.setValorTotal(valorItem);
-            session.persist(item);
-
-            ajustarCuenta(session, compraGerenciada, valorItem);
-
-            tx.commit();
+            itemCompraDAO.guardar(conexion, item);
+            ajustarCuenta(conexion, compraGerenciada, valorItem);
             return item;
-        } catch (RuntimeException e) {
-            Errores.revertir(tx);
-            throw Errores.traducir(e);
-        } finally {
-            session.close();
-        }
+        });
     }
 
     public void quitar(ItemCompra item) {
         compraController.verificarEditable(item.getCompra());
 
-        Transaction tx = null;
-        Session session = HibernateUtil.abrirSesion();
-        try {
-            tx = session.beginTransaction();
-
-            ItemCompra itemGerenciado = session.get(ItemCompra.class, item.getId());
+        BD.ejecutarEnTransaccion(conexion -> {
+            ItemCompra itemGerenciado = itemCompraDAO.buscarPorId(conexion, item.getId());
             if (itemGerenciado == null) {
-                tx.commit();
                 return;
             }
             Compra compraGerenciada = itemGerenciado.getCompra();
             BigDecimal valorItem = itemGerenciado.getValorTotal() == null
                     ? BigDecimal.ZERO
                     : itemGerenciado.getValorTotal();
-
-            session.remove(itemGerenciado);
-            ajustarCuenta(session, compraGerenciada, valorItem.negate());
-
-            tx.commit();
-        } catch (RuntimeException e) {
-            Errores.revertir(tx);
-            throw Errores.traducir(e);
-        } finally {
-            session.close();
-        }
+            itemCompraDAO.eliminar(conexion, itemGerenciado);
+            ajustarCuenta(conexion, compraGerenciada, valorItem.negate());
+        });
     }
 
     public List<ItemCompra> listarPorCompra(Compra compra) {
@@ -106,13 +83,13 @@ public class ItemCompraController {
      * nota y al saldo del proveedor, dentro de la transaccion que ya esta
      * abierta.
      */
-    private void ajustarCuenta(Session session, Compra compra, BigDecimal diferencia) {
+    private void ajustarCuenta(Connection conexion, Compra compra, BigDecimal diferencia) throws SQLException {
         BigDecimal totalActual = compra.getValorTotal() == null ? BigDecimal.ZERO : compra.getValorTotal();
         compra.setValorTotal(totalActual.add(diferencia));
-        session.merge(compra);
+        compraDAO.guardar(conexion, compra);
 
-        Proveedor proveedorGerenciado = session.get(Proveedor.class, compra.getProveedor().getId());
+        Proveedor proveedorGerenciado = proveedorDAO.buscarPorId(conexion, compra.getProveedor().getId());
         proveedorGerenciado.setSaldo(proveedorGerenciado.getSaldo().add(diferencia));
-        session.merge(proveedorGerenciado);
+        proveedorDAO.guardar(conexion, proveedorGerenciado);
     }
 }

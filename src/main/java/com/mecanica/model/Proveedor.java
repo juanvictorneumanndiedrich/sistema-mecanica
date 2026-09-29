@@ -1,6 +1,5 @@
 package com.mecanica.model;
 
-import jakarta.persistence.*;
 import java.math.BigDecimal;
 
 /**
@@ -12,25 +11,17 @@ import java.math.BigDecimal;
  * Cliente, pero al reves: aca positivo significa que la mecanica debe al
  * proveedor.
  */
-@Entity
-@Table(name = "proveedor")
 public class Proveedor {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 120)
     private String nombre;
 
     /** RUC do proveedor. */
-    @Column(name = "documento", length = 30)
     private String documento;
 
-    @Column(length = 30)
     private String telefono;
 
-    @Column(length = 120)
     private String contacto;
 
     /**
@@ -38,7 +29,6 @@ public class Proveedor {
      * cerrar una Compra (se suma el valorTotal) y baja con los pagos -- en
      * ningun caso queda vinculado a una Compra especifica.
      */
-    @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal saldo = BigDecimal.ZERO;
 
     public Proveedor() {

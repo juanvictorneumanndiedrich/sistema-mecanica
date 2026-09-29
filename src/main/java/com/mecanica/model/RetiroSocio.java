@@ -1,6 +1,5 @@
 package com.mecanica.model;
 
-import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -16,29 +15,18 @@ import java.time.LocalDate;
  * para evitar el mismo problema que tenia el retiro de empleado antes de la
  * correccion: un mismo retiro descontado dos veces en dos cierres distintos.
  */
-@Entity
-@Table(name = "retiro_socio")
 public class RetiroSocio {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "socio_id", nullable = false)
     private Socio socio;
 
-    @Column(nullable = false)
     private LocalDate fecha;
 
-    @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal valor;
 
-    @Column(length = 200)
     private String observacion;
 
-    @ManyToOne
-    @JoinColumn(name = "cierre_id")
     private CierreMensual cierre;
 
     public RetiroSocio() {

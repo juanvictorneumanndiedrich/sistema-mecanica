@@ -1,16 +1,15 @@
 package com.mecanica.controller;
 
 import com.mecanica.dao.ItemOrdenServicioDAO;
+import com.mecanica.dao.OrdenDeServicioDAO;
 import com.mecanica.enums.TipoItemOrdenServicio;
 import com.mecanica.model.ItemOrdenServicio;
 import com.mecanica.model.OrdenDeServicio;
-import com.mecanica.util.Errores;
-import com.mecanica.util.HibernateUtil;
-import org.hibernate.LockMode;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
+import com.mecanica.util.BD;
 
 import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.List;
 
 /**
@@ -20,6 +19,7 @@ import java.util.List;
 public class ItemOrdenServicioController {
 
     private final ItemOrdenServicioDAO itemOrdemServicoDAO = new ItemOrdenServicioDAO();
+    private final OrdenDeServicioDAO ordenDAO = new OrdenDeServicioDAO();
 
     public ItemOrdenServicio agregar(OrdenDeServicio os, TipoItemOrdenServicio tipo, String descripcion,
                                        BigDecimal cantidad, BigDecimal valorUnitario) {
@@ -33,69 +33,43 @@ public class ItemOrdenServicioController {
             throw new IllegalArgumentException("La descripción del item es obligatoria.");
         }
 
-        Transaction tx = null;
-        Session session = HibernateUtil.abrirSesion();
-        try {
-            tx = session.beginTransaction();
-
+        ItemOrdenServicio item = BD.transaccion(conexion -> {
             // se traba la OS mientras se recalcula el total, para que dos altas de item
             // al mismo tiempo no dejen el total distinto de la suma de los items
-            OrdenDeServicio osGestionada = session.get(OrdenDeServicio.class, os.getId(), LockMode.PESSIMISTIC_WRITE);
+            OrdenDeServicio osGestionada = ordenDAO.buscarPorIdParaActualizar(conexion, os.getId());
             if (osGestionada == null) {
                 throw new IllegalStateException("Esa orden de servicio ya no existe.");
             }
-
-            ItemOrdenServicio item = new ItemOrdenServicio();
-            item.setOrdenDeServicio(osGestionada);
-            item.setTipo(tipo);
-            item.setDescripcion(descripcion);
-            item.setCantidad(cantidad);
-            item.setValorUnitario(valorUnitario);
-            item.setValorTotal(cantidad.multiply(valorUnitario));
-            session.persist(item);
-
-            actualizarTotal(session, osGestionada);
-            tx.commit();
-
-            // el objeto que quedo en la pantalla tambien muestra el total nuevo
-            os.setValorTotal(osGestionada.getValorTotal());
-            return item;
-        } catch (RuntimeException e) {
-            Errores.revertir(tx);
-            throw Errores.traducir(e);
-        } finally {
-            session.close();
-        }
+            ItemOrdenServicio nuevo = new ItemOrdenServicio();
+            nuevo.setOrdenDeServicio(osGestionada);
+            nuevo.setTipo(tipo);
+            nuevo.setDescripcion(descripcion);
+            nuevo.setCantidad(cantidad);
+            nuevo.setValorUnitario(valorUnitario);
+            nuevo.setValorTotal(cantidad.multiply(valorUnitario));
+            itemOrdemServicoDAO.guardar(conexion, nuevo);
+            actualizarTotal(conexion, osGestionada);
+            return nuevo;
+        });
+        // el objeto que quedo en la pantalla tambien muestra el total nuevo
+        os.setValorTotal(item.getOrdenDeServicio().getValorTotal());
+        return item;
     }
 
     public void quitar(ItemOrdenServicio item) {
-        Transaction tx = null;
-        Session session = HibernateUtil.abrirSesion();
-        try {
-            tx = session.beginTransaction();
-
-            // Se busca el item por id: con merge, Hibernate trae la OS con su lista
-            // de items en cascada y termina cancelando el borrado sin avisar.
-            ItemOrdenServicio gestionado = session.get(ItemOrdenServicio.class, item.getId());
+        BigDecimal totalNuevo = BD.transaccion(conexion -> {
+            ItemOrdenServicio gestionado = itemOrdemServicoDAO.buscarPorId(conexion, item.getId());
             if (gestionado == null) {
-                tx.commit();
-                return;
+                return null;
             }
-            OrdenDeServicio osGestionada = session.get(OrdenDeServicio.class,
-                    gestionado.getOrdenDeServicio().getId(), LockMode.PESSIMISTIC_WRITE);
-            session.remove(gestionado);
-
-            actualizarTotal(session, osGestionada);
-            tx.commit();
-
-            if (item.getOrdenDeServicio() != null) {
-                item.getOrdenDeServicio().setValorTotal(osGestionada.getValorTotal());
-            }
-        } catch (RuntimeException e) {
-            Errores.revertir(tx);
-            throw Errores.traducir(e);
-        } finally {
-            session.close();
+            OrdenDeServicio osGestionada = ordenDAO.buscarPorIdParaActualizar(conexion,
+                    gestionado.getOrdenDeServicio().getId());
+            itemOrdemServicoDAO.eliminar(conexion, gestionado);
+            actualizarTotal(conexion, osGestionada);
+            return osGestionada.getValorTotal();
+        });
+        if (totalNuevo != null && item.getOrdenDeServicio() != null) {
+            item.getOrdenDeServicio().setValorTotal(totalNuevo);
         }
     }
 
@@ -107,13 +81,9 @@ public class ItemOrdenServicioController {
      * Suma los items de la OS dentro de la MISMA transaccion del agregar/quitar,
      * para que el total nunca quede desfasado de los items.
      */
-    private void actualizarTotal(Session session, OrdenDeServicio os) {
-        session.flush();
-        BigDecimal total = session.createQuery(
-                        "SELECT COALESCE(SUM(i.valorTotal), 0) FROM ItemOrdenServicio i WHERE i.ordenDeServicio = :os",
-                        BigDecimal.class)
-                .setParameter("os", os)
-                .getSingleResult();
+    private void actualizarTotal(Connection conexion, OrdenDeServicio os) throws SQLException {
+        BigDecimal total = itemOrdemServicoDAO.sumarPorOrden(conexion, os.getId());
         os.setValorTotal(total);
+        BD.actualizar(conexion, "UPDATE orden_de_servicio SET valor_total = ? WHERE id = ?", total, os.getId());
     }
 }

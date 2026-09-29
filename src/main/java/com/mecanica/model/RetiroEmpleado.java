@@ -1,7 +1,6 @@
 package com.mecanica.model;
 
 import com.mecanica.enums.TipoRetiroEmpleado;
-import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -13,32 +12,20 @@ import java.time.LocalDate;
  * ese retiro ya fue usado/descontado en un pago de salario, para que no
  * se cuente de nuevo en el mes siguiente.
  */
-@Entity
-@Table(name = "retiro_empleado")
 public class RetiroEmpleado {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "empleado_id", nullable = false)
     private Empleado empleado;
 
-    @Column(nullable = false)
     private LocalDate fecha;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
     private TipoRetiroEmpleado tipo;
 
-    @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal valor;
 
-    @Column(length = 200)
     private String observacion;
 
-    @Column(nullable = false)
     private boolean liquidado = false;
 
     private LocalDate fechaLiquidacion;
@@ -49,8 +36,6 @@ public class RetiroEmpleado {
      * reimprimir el recibo de un pago antiguo con sus descuentos exactos
      * (ver EmpleadoController.pagarSalario y ReporteController.reciboSalario).
      */
-    @ManyToOne
-    @JoinColumn(name = "pago_salario_id")
     private MovimientoFinanciero pagoSalario;
 
     public RetiroEmpleado() {

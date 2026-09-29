@@ -2,7 +2,6 @@ package com.mecanica.model;
 
 import com.mecanica.enums.CategoriaMovimientoFinanciero;
 import com.mecanica.enums.TipoMovimientoFinanciero;
-import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -24,29 +23,18 @@ import java.time.LocalDate;
  * entran en cada cierre -- no es necesariamente por fecha calendario, para
  * poder dejar algo para el cierre siguiente o traer algo de uno anterior.
  */
-@Entity
-@Table(name = "movimiento_financiero")
 public class MovimientoFinanciero {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
     private LocalDate fecha;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
     private TipoMovimientoFinanciero tipo;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
     private CategoriaMovimientoFinanciero categoria;
 
-    @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal valor;
 
-    @Column(length = 200)
     private String descripcion;
 
     // Descuento (perdon de deuda) aplicado en el pago que origino este
@@ -57,28 +45,18 @@ public class MovimientoFinanciero {
     // porcentaje guardado es sobre el saldo que habia antes del pago, y los
     // dos campos existen solo para mostrarlos en la tabla de Movimientos --
     // ver ClienteController/ProveedorController.registrarPagamento().
-    @Column(name = "descuento_valor", precision = 14, scale = 2)
     private BigDecimal descuentoValor;
 
-    @Column(name = "descuento_porcentaje", precision = 5, scale = 2)
     private BigDecimal descuentoPorcentaje;
 
     // Referencias opcionales al origen del movimiento (solo una de ellas
     // queda completada, de acuerdo con la categoria).
-    @ManyToOne
-    @JoinColumn(name = "cliente_id")
     private Cliente cliente;
 
-    @ManyToOne
-    @JoinColumn(name = "proveedor_id")
     private Proveedor proveedor;
 
-    @ManyToOne
-    @JoinColumn(name = "empleado_id")
     private Empleado empleado;
 
-    @ManyToOne
-    @JoinColumn(name = "cierre_id")
     private CierreMensual cierre;
 
     public MovimientoFinanciero() {

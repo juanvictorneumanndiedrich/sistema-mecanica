@@ -1,16 +1,14 @@
 package com.mecanica.controller;
 
+import com.mecanica.dao.ClienteDAO;
 import com.mecanica.dao.OrdenDeServicioDAO;
 import com.mecanica.enums.EstadoOrdenServicio;
 import com.mecanica.enums.Permiso;
 import com.mecanica.model.Cliente;
 import com.mecanica.model.Maquinario;
 import com.mecanica.model.OrdenDeServicio;
-import com.mecanica.util.Errores;
-import com.mecanica.util.HibernateUtil;
+import com.mecanica.util.BD;
 import com.mecanica.util.Sesion;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -24,6 +22,7 @@ import java.util.List;
 public class OrdenDeServicioController {
 
     private final OrdenDeServicioDAO ordemDeServicoDAO = new OrdenDeServicioDAO();
+    private final ClienteDAO clienteDAO = new ClienteDAO();
     private final AuditoriaController auditoria = new AuditoriaController();
 
     /**
@@ -66,30 +65,24 @@ public class OrdenDeServicioController {
             throw new IllegalStateException("Esa OS ya esta cerrada o cancelada.");
         }
 
-        Transaction tx = null;
-        Session session = HibernateUtil.abrirSesion();
-        try {
-            tx = session.beginTransaction();
+        OrdenDeServicio osGerenciada = BD.transaccion(conexion -> {
+            OrdenDeServicio gerenciada = ordemDeServicoDAO.buscarPorId(conexion, os.getId());
+            gerenciada.setEstado(EstadoOrdenServicio.CONCLUIDA);
+            gerenciada.setFechaCierre(LocalDate.now());
+            ordemDeServicoDAO.guardar(conexion, gerenciada);
 
-            OrdenDeServicio osGerenciada = session.get(OrdenDeServicio.class, os.getId());
-            osGerenciada.setEstado(EstadoOrdenServicio.CONCLUIDA);
-            osGerenciada.setFechaCierre(LocalDate.now());
-            session.merge(osGerenciada);
-
-            Cliente clienteGerenciado = session.get(Cliente.class, osGerenciada.getCliente().getId());
-            clienteGerenciado.setSaldo(clienteGerenciado.getSaldo().add(osGerenciada.getValorTotal()));
-            session.merge(clienteGerenciado);
-
-            tx.commit();
-            auditoria.registrar("OS CERRADA", "OS Nº " + osGerenciada.getNumero() + " - "
-                    + clienteGerenciado.getNombre() + " - " + AuditoriaController.gs(osGerenciada.getValorTotal()));
-            return osGerenciada;
-        } catch (RuntimeException e) {
-            Errores.revertir(tx);
-            throw Errores.traducir(e);
-        } finally {
-            session.close();
-        }
+            Cliente clienteGerenciado = clienteDAO.buscarPorId(conexion, gerenciada.getCliente().getId());
+            clienteGerenciado.setSaldo(clienteGerenciado.getSaldo().add(gerenciada.getValorTotal()));
+            clienteDAO.guardar(conexion, clienteGerenciado);
+            gerenciada.setCliente(clienteGerenciado);
+            if (gerenciada.getMaquinario() != null) {
+                gerenciada.getMaquinario().setCliente(clienteGerenciado);
+            }
+            return gerenciada;
+        });
+        auditoria.registrar("OS CERRADA", "OS Nº " + osGerenciada.getNumero() + " - "
+                + osGerenciada.getCliente().getNombre() + " - " + AuditoriaController.gs(osGerenciada.getValorTotal()));
+        return osGerenciada;
     }
 
     public OrdenDeServicio cancelar(OrdenDeServicio os) {

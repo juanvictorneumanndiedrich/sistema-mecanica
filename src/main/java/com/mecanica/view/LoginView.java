@@ -15,8 +15,8 @@ import java.awt.event.WindowEvent;
  * despues lee el resultado con getUsuarioAutenticado().
  *
  * La autenticacion corre en un SwingWorker y no en el hilo de la
- * interfaz, porque la primera consulta dispara la creacion de la
- * SessionFactory de Hibernate y puede tardar varios segundos -- si
+ * interfaz, porque la primera consulta abre la conexion con la base y,
+ * si el PostgreSQL no responde, puede tardar unos segundos -- si
  * corriera en el hilo de la interfaz, la ventana quedaria congelada y
  * pareceria trabada.
  */
@@ -65,8 +65,8 @@ public class LoginView extends JDialog {
      * Apenas se abre la pantalla, conecta con la base en segundo plano y
      * crea el usuario "admin" si la tabla de usuarios todavia esta vacia.
      * Sirve para dos cosas: permitir el primer acceso a una base recien
-     * creada, y adelantar el arranque de Hibernate (que tarda unos
-     * segundos) mientras el usuario todavia esta escribiendo.
+     * creada, y dejar la conexion con la base ya abierta mientras el
+     * usuario todavia esta escribiendo.
      */
     private void verificarAccesoInicial() {
         setCargando(true, "CONECTANDO...");

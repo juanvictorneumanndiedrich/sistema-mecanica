@@ -1,6 +1,5 @@
 package com.mecanica.model;
 
-import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 
@@ -12,27 +11,18 @@ import java.time.LocalDateTime;
  * Usuario, a proposito: si un usuario se elimina despues, su historial tiene
  * que seguir existiendo tal cual.
  */
-@Entity
-@Table(name = "registro_auditoria")
 public class RegistroAuditoria {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "fecha_hora", nullable = false)
     private LocalDateTime fechaHora;
 
-    @Column(name = "usuario_login", length = 60)
     private String usuarioLogin;
 
-    @Column(name = "usuario_nombre", length = 120)
     private String usuarioNombre;
 
-    @Column(nullable = false, length = 60)
     private String accion;
 
-    @Column(length = 500)
     private String detalle;
 
     public RegistroAuditoria() {

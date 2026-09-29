@@ -1,6 +1,9 @@
 package com.mecanica.controller;
 
 import com.mecanica.dao.CierreMensualDAO;
+import com.mecanica.dao.CierreSocioDetalleDAO;
+import com.mecanica.dao.MovimientoFinancieroDAO;
+import com.mecanica.dao.RetiroSocioDAO;
 import com.mecanica.dao.SocioDAO;
 import com.mecanica.enums.Permiso;
 import com.mecanica.enums.TipoMovimientoFinanciero;
@@ -9,12 +12,8 @@ import com.mecanica.model.CierreSocioDetalle;
 import com.mecanica.model.MovimientoFinanciero;
 import com.mecanica.model.RetiroSocio;
 import com.mecanica.model.Socio;
-import com.mecanica.util.Errores;
-import com.mecanica.util.HibernateUtil;
+import com.mecanica.util.BD;
 import com.mecanica.util.Sesion;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
-import org.hibernate.query.Query;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -40,6 +39,9 @@ public class CierreMensualController {
 
     private final CierreMensualDAO cierreDAO = new CierreMensualDAO();
     private final SocioDAO socioDAO = new SocioDAO();
+    private final CierreSocioDetalleDAO detalleDAO = new CierreSocioDetalleDAO();
+    private final RetiroSocioDAO retiroSocioDAO = new RetiroSocioDAO();
+    private final MovimientoFinancieroDAO movimientoDAO = new MovimientoFinancieroDAO();
     private final AuditoriaController auditoria = new AuditoriaController();
 
     /** Historico de cierres ya hechos, del mas reciente al mas antiguo. */
@@ -69,59 +71,45 @@ public class CierreMensualController {
         BigDecimal gananciaTotal = totalEntradas.subtract(totalSalidas);
         BigDecimal parte = gananciaTotal.divide(BigDecimal.valueOf(socios.size()), 2, RoundingMode.HALF_UP);
 
-        Transaction tx = null;
-        Session session = HibernateUtil.abrirSesion();
-        try {
-            tx = session.beginTransaction();
-
-            CierreMensual cierre = new CierreMensual();
-            cierre.setFechaCierre(LocalDate.now());
-            cierre.setDescripcion(descripcion);
-            cierre.setTotalEntradas(totalEntradas);
-            cierre.setTotalSalidas(totalSalidas);
-            cierre.setGananciaTotal(gananciaTotal);
-            session.persist(cierre);
+        BigDecimal entradasDelCierre = totalEntradas;
+        BigDecimal salidasDelCierre = totalSalidas;
+        CierreMensual cierre = BD.transaccion(conexion -> {
+            CierreMensual nuevo = new CierreMensual();
+            nuevo.setFechaCierre(LocalDate.now());
+            nuevo.setDescripcion(descripcion);
+            nuevo.setTotalEntradas(entradasDelCierre);
+            nuevo.setTotalSalidas(salidasDelCierre);
+            nuevo.setGananciaTotal(gananciaTotal);
+            cierreDAO.guardar(conexion, nuevo);
 
             for (Socio socio : socios) {
-                Query<RetiroSocio> query = session.createQuery(
-                        "FROM RetiroSocio r WHERE r.socio = :socio AND r.cierre IS NULL ORDER BY r.fecha",
-                        RetiroSocio.class);
-                query.setParameter("socio", socio);
-                List<RetiroSocio> retiros = query.list();
-
+                List<RetiroSocio> retiros = retiroSocioDAO.listarSinCierre(conexion, socio);
                 BigDecimal yaRetirado = BigDecimal.ZERO;
                 for (RetiroSocio r : retiros) {
                     yaRetirado = yaRetirado.add(r.getValor());
-                    r.setCierre(cierre);
-                    session.merge(r);
+                    r.setCierre(nuevo);
+                    retiroSocioDAO.marcarCierre(conexion, r.getId(), nuevo.getId());
                 }
-
                 BigDecimal aRecibir = parte.subtract(yaRetirado);
 
                 CierreSocioDetalle detalle = new CierreSocioDetalle();
-                detalle.setCierre(cierre);
+                detalle.setCierre(nuevo);
                 detalle.setSocio(socio);
                 detalle.setParteGanancia(parte);
                 detalle.setYaRetirado(yaRetirado);
                 detalle.setValorARecibir(aRecibir);
-                session.persist(detalle);
-                cierre.getDetalles().add(detalle);
+                detalleDAO.guardar(conexion, detalle);
+                nuevo.getDetalles().add(detalle);
             }
 
             for (MovimientoFinanciero m : seleccionados) {
-                m.setCierre(cierre);
-                session.merge(m);
+                m.setCierre(nuevo);
+                movimientoDAO.marcarCierre(conexion, m.getId(), nuevo.getId());
             }
-
-            tx.commit();
-            auditoria.registrar("CIERRE MENSUAL", (descripcion == null || descripcion.isBlank() ? "" : descripcion + " - ")
-                    + seleccionados.size() + " movimientos - ganancia " + AuditoriaController.gs(gananciaTotal));
-            return cierre;
-        } catch (RuntimeException e) {
-            Errores.revertir(tx);
-            throw Errores.traducir(e);
-        } finally {
-            session.close();
-        }
+            return nuevo;
+        });
+        auditoria.registrar("CIERRE MENSUAL", (descripcion == null || descripcion.isBlank() ? "" : descripcion + " - ")
+                + seleccionados.size() + " movimientos - ganancia " + AuditoriaController.gs(gananciaTotal));
+        return cierre;
     }
 }

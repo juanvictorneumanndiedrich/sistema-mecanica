@@ -21,7 +21,7 @@ import java.util.List;
  * (CambiarClaveDialog): el formulario de edicion normal (UsuarioFormDialog)
  * nunca toca la clave, para no pisarla sin querer.
  *
- * Las llamadas al Controller (que abren Session de Hibernate) corren en
+ * Las llamadas al Controller (que consultan la base) corren en
  * SwingWorker para no trabar la interfaz, siguiendo el mismo patron ya
  * usado en ClientesMaquinariosPanel.
  */

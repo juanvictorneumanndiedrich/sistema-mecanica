@@ -24,7 +24,7 @@ import java.util.List;
  * Nuevo/Editar/Eliminar, y el cliente tiene ademas "Registrar Pago"
  * (descuenta directamente su saldo general -- ver ClienteController).
  *
- * Las llamadas al Controller (que abren Session de Hibernate) corren en
+ * Las llamadas al Controller (que consultan la base) corren en
  * SwingWorker para no trabar la interfaz, siguiendo el mismo patron ya
  * usado en LoginView.
  */

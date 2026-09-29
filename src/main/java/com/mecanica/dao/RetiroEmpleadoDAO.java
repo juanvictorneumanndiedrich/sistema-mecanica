@@ -1,19 +1,66 @@
 package com.mecanica.dao;
 
+import com.mecanica.enums.TipoRetiroEmpleado;
 import com.mecanica.model.Empleado;
 import com.mecanica.model.MovimientoFinanciero;
 import com.mecanica.model.RetiroEmpleado;
-import com.mecanica.util.HibernateUtil;
-import org.hibernate.Session;
-import org.hibernate.query.Query;
+import com.mecanica.util.BD;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
 
 public class RetiroEmpleadoDAO extends AbstractGenericDAO<RetiroEmpleado, Long> {
 
-    public RetiroEmpleadoDAO() {
-        super(RetiroEmpleado.class);
+    @Override
+    protected String tabla() {
+        return "retiro_empleado";
+    }
+
+    @Override
+    protected String[] columnas() {
+        return new String[] {"empleado_id", "fecha", "tipo", "valor", "observacion", "liquidado", "fechaliquidacion",
+                "pago_salario_id"};
+    }
+
+    @Override
+    protected Object[] valoresColumnas(RetiroEmpleado r) {
+        return new Object[] {r.getEmpleado() == null ? null : r.getEmpleado().getId(), r.getFecha(), r.getTipo(),
+                r.getValor(), r.getObservacion(), r.isLiquidado(), r.getFechaLiquidacion(),
+                r.getPagoSalario() == null ? null : r.getPagoSalario().getId()};
+    }
+
+    @Override
+    protected RetiroEmpleado mapear(ResultSet rs) throws SQLException {
+        RetiroEmpleado r = new RetiroEmpleado();
+        r.setEmpleado(BD.referencia(rs, "empleado_id", Empleado::new, Empleado::setId));
+        r.setFecha(BD.fecha(rs, "fecha"));
+        r.setTipo(BD.enumerado(rs, "tipo", TipoRetiroEmpleado.class));
+        r.setValor(rs.getBigDecimal("valor"));
+        r.setObservacion(rs.getString("observacion"));
+        r.setLiquidado(rs.getBoolean("liquidado"));
+        r.setFechaLiquidacion(BD.fecha(rs, "fechaliquidacion"));
+        r.setPagoSalario(BD.referencia(rs, "pago_salario_id", MovimientoFinanciero::new, MovimientoFinanciero::setId));
+        return r;
+    }
+
+    @Override
+    protected void completarReferencias(Connection conexion, List<RetiroEmpleado> lista) throws SQLException {
+        completar(conexion, lista, RetiroEmpleado::getEmpleado, RetiroEmpleado::setEmpleado, new EmpleadoDAO());
+        completar(conexion, lista, RetiroEmpleado::getPagoSalario, RetiroEmpleado::setPagoSalario,
+                new MovimientoFinancieroDAO());
+    }
+
+    @Override
+    protected Long idDe(RetiroEmpleado r) {
+        return r.getId();
+    }
+
+    @Override
+    protected void ponerId(RetiroEmpleado r, Long id) {
+        r.setId(id);
     }
 
     /**
@@ -22,15 +69,14 @@ public class RetiroEmpleadoDAO extends AbstractGenericDAO<RetiroEmpleado, Long> 
      * usado en un pago de salario anterior no debe contarse de nuevo.
      */
     public List<RetiroEmpleado> listarPorEmpleadoYPeriodo(Empleado empleado, LocalDate inicio, LocalDate fin) {
-        try (Session session = HibernateUtil.abrirSesion()) {
-            String hql = "FROM RetiroEmpleado r WHERE r.empleado = :empleado "
-                    + "AND r.fecha BETWEEN :inicio AND :fin AND r.liquidado = false ORDER BY r.fecha";
-            Query<RetiroEmpleado> query = session.createQuery(hql, RetiroEmpleado.class);
-            query.setParameter("empleado", empleado);
-            query.setParameter("inicio", inicio);
-            query.setParameter("fin", fin);
-            return query.list();
-        }
+        return BD.consultar(conexion -> listarPorEmpleadoYPeriodo(conexion, empleado, inicio, fin));
+    }
+
+    /** Version para usar dentro de una transaccion (pago de salario). */
+    public List<RetiroEmpleado> listarPorEmpleadoYPeriodo(Connection conexion, Empleado empleado, LocalDate inicio,
+            LocalDate fin) throws SQLException {
+        return listar(conexion, "WHERE empleado_id = ? AND fecha BETWEEN ? AND ? AND liquidado = false ORDER BY fecha",
+                empleado.getId(), inicio, fin);
     }
 
     /**
@@ -40,21 +86,14 @@ public class RetiroEmpleadoDAO extends AbstractGenericDAO<RetiroEmpleado, Long> 
      * empleado liquidados en la misma fecha del pago.
      */
     public List<RetiroEmpleado> listarPorPagoSalario(MovimientoFinanciero pago) {
-        try (Session session = HibernateUtil.abrirSesion()) {
-            Query<RetiroEmpleado> query = session.createQuery(
-                    "FROM RetiroEmpleado r WHERE r.pagoSalario = :pago ORDER BY r.fecha", RetiroEmpleado.class);
-            query.setParameter("pago", pago);
-            List<RetiroEmpleado> vinculados = query.list();
+        return BD.consultar(conexion -> {
+            List<RetiroEmpleado> vinculados = listar(conexion, "WHERE pago_salario_id = ? ORDER BY fecha",
+                    pago.getId());
             if (!vinculados.isEmpty() || pago.getEmpleado() == null) {
                 return vinculados;
             }
-            Query<RetiroEmpleado> antiguos = session.createQuery(
-                    "FROM RetiroEmpleado r WHERE r.empleado = :empleado AND r.liquidado = true "
-                            + "AND r.pagoSalario IS NULL AND r.fechaLiquidacion = :fecha ORDER BY r.fecha",
-                    RetiroEmpleado.class);
-            antiguos.setParameter("empleado", pago.getEmpleado());
-            antiguos.setParameter("fecha", pago.getFecha());
-            return antiguos.list();
-        }
+            return listar(conexion, "WHERE empleado_id = ? AND liquidado = true AND pago_salario_id IS NULL "
+                    + "AND fechaliquidacion = ? ORDER BY fecha", pago.getEmpleado().getId(), pago.getFecha());
+        });
     }
 }

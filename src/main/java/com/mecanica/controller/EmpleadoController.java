@@ -9,12 +9,8 @@ import com.mecanica.enums.TipoMovimientoFinanciero;
 import com.mecanica.model.Empleado;
 import com.mecanica.model.MovimientoFinanciero;
 import com.mecanica.model.RetiroEmpleado;
-import com.mecanica.util.Errores;
-import com.mecanica.util.HibernateUtil;
+import com.mecanica.util.BD;
 import com.mecanica.util.Sesion;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
-import org.hibernate.query.Query;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -109,20 +105,9 @@ public class EmpleadoController {
         }
         LocalDate fechaPago = LocalDate.now();
 
-        Transaction tx = null;
-        Session session = HibernateUtil.abrirSesion();
-        try {
-            tx = session.beginTransaction();
-
-            Query<RetiroEmpleado> query = session.createQuery(
-                    "FROM RetiroEmpleado r WHERE r.empleado = :empleado "
-                            + "AND r.fecha BETWEEN :inicio AND :fin AND r.liquidado = false ORDER BY r.fecha",
-                    RetiroEmpleado.class);
-            query.setParameter("empleado", empleado);
-            query.setParameter("inicio", inicio);
-            query.setParameter("fin", fin);
-            List<RetiroEmpleado> retiradas = query.list();
-
+        ResultadoCierreMensual resultado = BD.transaccion(conexion -> {
+            List<RetiroEmpleado> retiradas =
+                    retiradaFuncionarioDAO.listarPorEmpleadoYPeriodo(conexion, empleado, inicio, fin);
             BigDecimal salarioBase = empleado.getSalarioBase() != null ? empleado.getSalarioBase() : BigDecimal.ZERO;
 
             // El movimiento se graba ANTES de marcar los retiros, para que cada
@@ -136,7 +121,7 @@ public class EmpleadoController {
             movimiento.setDescripcion("Salario de " + empleado.getNombre() + " ("
                     + inicio.format(FORMATO_FECHA) + " a " + fin.format(FORMATO_FECHA) + ")");
             movimiento.setEmpleado(empleado);
-            session.persist(movimiento);
+            movimientoDAO.guardar(conexion, movimiento);
 
             BigDecimal totalDescontado = BigDecimal.ZERO;
             for (RetiroEmpleado r : retiradas) {
@@ -144,25 +129,19 @@ public class EmpleadoController {
                 r.setLiquidado(true);
                 r.setFechaLiquidacion(fechaPago);
                 r.setPagoSalario(movimiento);
-                session.merge(r);
+                retiradaFuncionarioDAO.guardar(conexion, r);
             }
-
             BigDecimal valorLiquido = salarioBase.subtract(totalDescontado);
-
-            tx.commit();
-            auditoria.registrar("SALARIO PAGADO", movimiento.getDescripcion() + " - salario "
-                    + AuditoriaController.gs(salarioBase) + ", descuentos " + AuditoriaController.gs(totalDescontado)
-                    + ", liquido " + AuditoriaController.gs(valorLiquido));
-            ResultadoCierreMensual resultado =
+            ResultadoCierreMensual pago =
                     new ResultadoCierreMensual(empleado, new ArrayList<>(retiradas), totalDescontado, valorLiquido);
-            resultado.pagoSalario = movimiento;
-            return resultado;
-        } catch (RuntimeException e) {
-            Errores.revertir(tx);
-            throw Errores.traducir(e);
-        } finally {
-            session.close();
-        }
+            pago.pagoSalario = movimiento;
+            return pago;
+        });
+        auditoria.registrar("SALARIO PAGADO", resultado.getPagoSalario().getDescripcion() + " - salario "
+                + AuditoriaController.gs(resultado.getPagoSalario().getValor()) + ", descuentos "
+                + AuditoriaController.gs(resultado.getTotalDescontado())
+                + ", liquido " + AuditoriaController.gs(resultado.getValorLiquido()));
+        return resultado;
     }
 
     /** Pagos de salario ya hechos al empleado (el mas reciente primero), para reimprimir el recibo. */

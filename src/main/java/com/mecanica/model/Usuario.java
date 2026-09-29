@@ -1,6 +1,5 @@
 package com.mecanica.model;
 
-import jakarta.persistence.*;
 import com.mecanica.enums.Permiso;
 
 /**
@@ -11,74 +10,51 @@ import com.mecanica.enums.Permiso;
  * Los permisos son individuales por usuario (no fijos por "cargo"),
  * segun lo definido en la fase de pantallas: un booleano por area del sistema.
  */
-@Entity
-@Table(name = "usuario")
 public class Usuario {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 120)
     private String nombre;
 
-    @Column(nullable = false, unique = true, length = 60)
     private String login;
 
     /** Guardar sempre um hash (nunca a clave em texto puro). */
-    @Column(nullable = false, length = 255)
     private String clave;
 
-    @Column(nullable = false)
     private boolean activo = true;
 
     // Permisos individuales, uno por area de la navegacion principal (6 areas)
-    @Column(name = "permiso_clientes_maquinarios", nullable = false)
     private boolean permisoClientesMaquinarios;
 
-    @Column(name = "permiso_ordenes_servicio", nullable = false)
     private boolean permisoOrdenesServicio;
 
-    @Column(name = "permiso_compras_proveedores", nullable = false)
     private boolean permisoComprasProveedores;
 
-    @Column(name = "permiso_financiero", nullable = false)
     private boolean permisoFinanciero;
 
-    @Column(name = "permiso_empleados_socios", nullable = false)
     private boolean permisoEmpleadosSocios;
 
-    @Column(name = "permiso_usuarios", nullable = false)
     private boolean permisoUsuarios;
 
     // Permisos de accion, dentro de las areas (ver enums.Permiso). Agregados
-    // el 2026-09-17: el "default false" hace que el hbm2ddl=update pueda crear
-    // la columna aunque la tabla ya tenga usuarios (quedan todos en false).
-    @Column(name = "permiso_socios", nullable = false, columnDefinition = "boolean default false")
+    // el 2026-09-17: en la base estas columnas tienen "default false", asi los
+    // usuarios que ya existian quedaron todos en false.
     private boolean permisoSocios;
 
-    @Column(name = "permiso_editar_empleados", nullable = false, columnDefinition = "boolean default false")
     private boolean permisoEditarEmpleados;
 
-    @Column(name = "permiso_retiros_empleado", nullable = false, columnDefinition = "boolean default false")
     private boolean permisoRetirosEmpleado;
 
-    @Column(name = "permiso_pagar_salario", nullable = false, columnDefinition = "boolean default false")
     private boolean permisoPagarSalario;
 
-    @Column(name = "permiso_cierre_mensual", nullable = false, columnDefinition = "boolean default false")
     private boolean permisoCierreMensual;
 
-    @Column(name = "permiso_movimiento_manual", nullable = false, columnDefinition = "boolean default false")
     private boolean permisoMovimientoManual;
 
-    @Column(name = "permiso_eliminar_registros", nullable = false, columnDefinition = "boolean default false")
     private boolean permisoEliminarRegistros;
 
-    @Column(name = "permiso_cancelar_os", nullable = false, columnDefinition = "boolean default false")
     private boolean permisoCancelarOs;
 
-    @Column(name = "permiso_retirar_saldo", nullable = false, columnDefinition = "boolean default false")
     private boolean permisoRetirarSaldo;
 
 

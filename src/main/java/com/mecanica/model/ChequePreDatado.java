@@ -1,7 +1,6 @@
 package com.mecanica.model;
 
 import com.mecanica.enums.EstadoCheque;
-import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -19,39 +18,25 @@ import java.time.LocalDate;
  * acuerdo con el origen del cheque -- mismo esquema de las referencias
  * opcionales que ya existe en MovimientoFinanciero.
  */
-@Entity
-@Table(name = "cheque_predatado")
 public class ChequePreDatado {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "cliente_id")
     private Cliente cliente;
 
-    @ManyToOne
-    @JoinColumn(name = "proveedor_id")
     private Proveedor proveedor;
 
-    @Column(name = "numero_cheque", length = 40)
     private String numeroCheque;
 
-    @Column(length = 80)
     private String banco;
 
-    @Column(name = "fecha_registro", nullable = false)
     private LocalDate fechaRegistro;
 
     /** Fecha en la que el cheque puede depositarse/compensar -- el motivo de ser "pre-datado". */
-    @Column(name = "fecha_vencimiento", nullable = false)
     private LocalDate fechaVencimiento;
 
-    @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal valor;
 
-    @Column(length = 200)
     private String descripcion;
 
     // Descuento (perdon de deuda) aplicado junto con este cheque, opcional.
@@ -60,17 +45,12 @@ public class ChequePreDatado {
     // nadie pague por esa parte (el saldo baja por valor + descuentoValor).
     // Igual que en MovimientoFinanciero, estos campos son solo para
     // exhibicion -- ver ChequePreDatadoController.
-    @Column(name = "descuento_valor", precision = 14, scale = 2)
     private BigDecimal descuentoValor;
 
-    @Column(name = "descuento_porcentaje", precision = 5, scale = 2)
     private BigDecimal descuentoPorcentaje;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 12)
     private EstadoCheque estado = EstadoCheque.PENDIENTE;
 
-    @Column(name = "fecha_confirmacion")
     private LocalDate fechaConfirmacion;
 
     public ChequePreDatado() {

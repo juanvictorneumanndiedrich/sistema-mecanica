@@ -28,7 +28,7 @@ import java.util.List;
  * el filtro por cliente se aplica en memoria sobre lo ya cargado, porque el
  * DAO de OS no tiene una busqueda de OS por nombre de cliente.
  *
- * Las llamadas al Controller (que abren Session de Hibernate) corren en
+ * Las llamadas al Controller (que consultan la base) corren en
  * SwingWorker para no trabar la interfaz, siguiendo el mismo patron ya
  * usado en ClientesMaquinariosPanel.
  */

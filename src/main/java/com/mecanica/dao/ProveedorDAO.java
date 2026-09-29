@@ -1,34 +1,54 @@
 package com.mecanica.dao;
 
 import com.mecanica.model.Proveedor;
-import com.mecanica.util.HibernateUtil;
-import org.hibernate.Session;
-import org.hibernate.query.Query;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 
 public class ProveedorDAO extends AbstractGenericDAO<Proveedor, Long> {
 
-    public ProveedorDAO() {
-        super(Proveedor.class);
+    @Override
+    protected String tabla() {
+        return "proveedor";
+    }
+
+    @Override
+    protected String[] columnas() {
+        return new String[] {"nombre", "documento", "telefono", "contacto", "saldo"};
+    }
+
+    @Override
+    protected Object[] valoresColumnas(Proveedor p) {
+        return new Object[] {p.getNombre(), p.getDocumento(), p.getTelefono(), p.getContacto(), p.getSaldo()};
+    }
+
+    @Override
+    protected Proveedor mapear(ResultSet rs) throws SQLException {
+        Proveedor p = new Proveedor();
+        p.setNombre(rs.getString("nombre"));
+        p.setDocumento(rs.getString("documento"));
+        p.setTelefono(rs.getString("telefono"));
+        p.setContacto(rs.getString("contacto"));
+        p.setSaldo(rs.getBigDecimal("saldo"));
+        return p;
+    }
+
+    @Override
+    protected Long idDe(Proveedor p) {
+        return p.getId();
+    }
+
+    @Override
+    protected void ponerId(Proveedor p, Long id) {
+        p.setId(id);
     }
 
     public List<Proveedor> buscarPorNombre(String nombre) {
-        try (Session session = HibernateUtil.abrirSesion()) {
-            String hql = "FROM Proveedor f WHERE LOWER(f.nombre) LIKE LOWER(:nombre) ORDER BY f.nombre";
-            Query<Proveedor> query = session.createQuery(hql, Proveedor.class);
-            query.setParameter("nombre", "%" + nombre + "%");
-            return query.list();
-        }
+        return listar("WHERE LOWER(nombre) LIKE LOWER(?) ORDER BY nombre", "%" + nombre + "%");
     }
 
     public Proveedor buscarPorDocumento(String documento) {
-        try (Session session = HibernateUtil.abrirSesion()) {
-            String hql = "FROM Proveedor f WHERE f.documento = :documento";
-            Query<Proveedor> query = session.createQuery(hql, Proveedor.class);
-            query.setParameter("documento", documento);
-            List<Proveedor> resultado = query.list();
-            return resultado.isEmpty() ? null : resultado.get(0);
-        }
+        return primero("WHERE documento = ?", documento);
     }
 }

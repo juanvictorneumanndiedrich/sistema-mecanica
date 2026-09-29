@@ -46,7 +46,7 @@ import java.util.Set;
  * MovimientoManualDialog para registrar un movimiento manual (siempre con
  * categoria OTRO).
  *
- * Las llamadas al Controller (que abren Session de Hibernate) corren en
+ * Las llamadas al Controller (que consultan la base) corren en
  * SwingWorker para no trabar la interfaz, siguiendo el mismo patron ya
  * usado en ClientesMaquinariosPanel.
  */

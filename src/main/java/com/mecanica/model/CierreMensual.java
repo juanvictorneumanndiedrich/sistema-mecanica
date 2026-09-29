@@ -1,6 +1,5 @@
 package com.mecanica.model;
 
-import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -18,30 +17,20 @@ import java.util.List;
  * MovimientoFinanciero.cierre / RetiroSocio.cierre) y no vuelven a
  * aparecer como pendientes en un cierre futuro.
  */
-@Entity
-@Table(name = "cierre_mensual")
 public class CierreMensual {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
     private LocalDate fechaCierre;
 
-    @Column(length = 100)
     private String descripcion;
 
-    @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal totalEntradas;
 
-    @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal totalSalidas;
 
-    @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal gananciaTotal;
 
-    @OneToMany(mappedBy = "cierre", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CierreSocioDetalle> detalles = new ArrayList<>();
 
     public CierreMensual() {

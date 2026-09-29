@@ -1,6 +1,5 @@
 package com.mecanica.model;
 
-import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -11,33 +10,22 @@ import java.time.LocalDate;
  * en el periodo -- por eso no existe una entidad "CierreEmpleado"
  * separada, a diferencia de lo que pasa con el proveedor.
  */
-@Entity
-@Table(name = "empleado")
 public class Empleado {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 120)
     private String nombre;
 
-    @Column(name = "documento", length = 30)
     private String documento;
 
-    @Column(length = 30)
     private String telefono;
 
-    @Column(length = 80)
     private String cargo;
 
-    @Column(name = "salario_base", precision = 14, scale = 2)
     private BigDecimal salarioBase;
 
-    @Column(name = "fecha_admision")
     private LocalDate fechaAdmision;
 
-    @Column(nullable = false)
     private boolean activo = true;
 
     public Empleado() {

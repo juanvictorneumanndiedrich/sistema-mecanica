@@ -1,6 +1,5 @@
 package com.mecanica.model;
 
-import jakarta.persistence.*;
 
 /**
  * Uno de los 2 socios de la mecanica. La division de ganancia entre los socios es
@@ -8,25 +7,17 @@ import jakarta.persistence.*;
  * configurable aca -- la regla se aplica en codigo (Controller), no en
  * un dato editable.
  */
-@Entity
-@Table(name = "socio")
 public class Socio {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 120)
     private String nombre;
 
     /** Cedula de identidad (CI), documento paraguaio. */
-    @Column(name = "documento", length = 30)
     private String documento;
 
-    @Column(length = 30)
     private String telefono;
 
-    @Column(nullable = false)
     private boolean activo = true;
 
     public Socio() {

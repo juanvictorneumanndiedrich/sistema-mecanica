@@ -39,7 +39,7 @@ import java.util.Set;
  * va cubriendo las notas de la mas vieja a la mas nueva, y una nota ya
  * PAGADA queda bloqueada (no se edita ni se borra).
  *
- * Las llamadas al Controller (que abren Session de Hibernate) corren en
+ * Las llamadas al Controller (que consultan la base) corren en
  * SwingWorker para no trabar la interfaz, siguiendo el mismo patron ya
  * usado en ClientesMaquinariosPanel.
  */

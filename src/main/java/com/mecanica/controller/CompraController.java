@@ -5,11 +5,8 @@ import com.mecanica.dao.ProveedorDAO;
 import com.mecanica.enums.Permiso;
 import com.mecanica.model.Compra;
 import com.mecanica.model.Proveedor;
-import com.mecanica.util.Errores;
-import com.mecanica.util.HibernateUtil;
+import com.mecanica.util.BD;
 import com.mecanica.util.Sesion;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -58,7 +55,7 @@ public class CompraController {
     }
 
     /**
-     * Borra la nota entera (con todos sus items, por el cascade) y DESCUENTA
+     * Borra la nota entera (con todos sus items, ver CompraDAO) y DESCUENTA
      * su valor de la cuenta del proveedor -- las dos cosas en la misma
      * transaccion, para que la cuenta nunca quede inflada por una nota que
      * ya no existe. Una nota ya pagada no se puede borrar.
@@ -67,35 +64,25 @@ public class CompraController {
         Sesion.exigir(Permiso.ELIMINAR_REGISTROS);
         verificarEditable(compra);
 
-        Transaction tx = null;
-        Session session = HibernateUtil.abrirSesion();
-        try {
-            tx = session.beginTransaction();
-
-            Compra compraGerenciada = session.get(Compra.class, compra.getId());
+        Object[] eliminado = BD.transaccion(conexion -> {
+            Compra compraGerenciada = compraDAO.buscarPorId(conexion, compra.getId());
             if (compraGerenciada == null) {
-                tx.commit();
-                return;
+                return null;
             }
-
             BigDecimal valorNota = compraGerenciada.getValorTotal() == null
                     ? BigDecimal.ZERO
                     : compraGerenciada.getValorTotal();
-
-            Proveedor proveedorGerenciado = session.get(Proveedor.class, compraGerenciada.getProveedor().getId());
+            Proveedor proveedorGerenciado = proveedorDAO.buscarPorId(conexion, compraGerenciada.getProveedor().getId());
             proveedorGerenciado.setSaldo(proveedorGerenciado.getSaldo().subtract(valorNota));
-            session.merge(proveedorGerenciado);
-
-            session.remove(compraGerenciada);
-
-            tx.commit();
+            proveedorDAO.guardar(conexion, proveedorGerenciado);
+            compraDAO.eliminar(conexion, compraGerenciada);
+            return new Object[] {compraGerenciada, proveedorGerenciado, valorNota};
+        });
+        if (eliminado != null) {
+            Compra compraGerenciada = (Compra) eliminado[0];
+            Proveedor proveedorGerenciado = (Proveedor) eliminado[1];
             auditoria.registrar("NOTA DE COMPRA ELIMINADA", "Nota Nº " + compraGerenciada.getNumero() + " de "
-                    + proveedorGerenciado.getNombre() + " - " + AuditoriaController.gs(valorNota));
-        } catch (RuntimeException e) {
-            Errores.revertir(tx);
-            throw Errores.traducir(e);
-        } finally {
-            session.close();
+                    + proveedorGerenciado.getNombre() + " - " + AuditoriaController.gs((BigDecimal) eliminado[2]));
         }
     }
 

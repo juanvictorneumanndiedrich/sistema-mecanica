@@ -1,34 +1,15 @@
 package com.mecanica.util;
 
-import org.hibernate.Transaction;
-
 import java.sql.SQLException;
 
 /**
- * Ayudas para que un error de base de datos llegue a la pantalla como un mensaje
- * entendible, y para que el rollback nunca tape el error original.
- *
- * <p>El problema que resuelve: si la sesion se cierra antes del catch (por ejemplo
- * con try-with-resources), el tx.rollback() falla con "LogicalConnectionManagedImpl
- * ... is closed" y ESE error reemplaza al de verdad. Por eso todo rollback pasa por
- * {@link #revertir(Transaction)}, que ignora su propia falla, y todo error que sube
- * al usuario pasa por {@link #traducir(RuntimeException)}.
+ * Ayuda para que un error de base de datos llegue a la pantalla como un
+ * mensaje entendible: todo error que sube al usuario pasa por
+ * {@link #traducir(RuntimeException)} (lo hace BD.consultar/BD.transaccion).
  */
 public final class Errores {
 
     private Errores() {
-    }
-
-    /** Deshace la transaccion sin dejar que un fallo del propio rollback tape el error real. */
-    public static void revertir(Transaction tx) {
-        try {
-            if (tx != null && tx.isActive()) {
-                tx.rollback();
-            }
-        } catch (RuntimeException e) {
-            // el rollback puede fallar si la conexion ya se cerro: no debe ocultar el error original
-            e.printStackTrace();
-        }
     }
 
     /**

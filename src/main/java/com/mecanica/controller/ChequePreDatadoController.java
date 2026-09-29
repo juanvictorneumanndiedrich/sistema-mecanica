@@ -1,6 +1,9 @@
 package com.mecanica.controller;
 
 import com.mecanica.dao.ChequePreDatadoDAO;
+import com.mecanica.dao.ClienteDAO;
+import com.mecanica.dao.MovimientoFinancieroDAO;
+import com.mecanica.dao.ProveedorDAO;
 import com.mecanica.enums.CategoriaMovimientoFinanciero;
 import com.mecanica.enums.EstadoCheque;
 import com.mecanica.enums.TipoMovimientoFinanciero;
@@ -8,10 +11,7 @@ import com.mecanica.model.Cliente;
 import com.mecanica.model.ChequePreDatado;
 import com.mecanica.model.MovimientoFinanciero;
 import com.mecanica.model.Proveedor;
-import com.mecanica.util.Errores;
-import com.mecanica.util.HibernateUtil;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
+import com.mecanica.util.BD;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -32,6 +32,9 @@ import java.util.List;
 public class ChequePreDatadoController {
 
     private final ChequePreDatadoDAO chequeDAO = new ChequePreDatadoDAO();
+    private final ClienteDAO clienteDAO = new ClienteDAO();
+    private final ProveedorDAO proveedorDAO = new ProveedorDAO();
+    private final MovimientoFinancieroDAO movimientoDAO = new MovimientoFinancieroDAO();
     private final AuditoriaController auditoria = new AuditoriaController();
 
     /**
@@ -59,23 +62,19 @@ public class ChequePreDatadoController {
         validar(valorCheque, fechaVencimiento);
         BigDecimal descuento = validarDescuento(descuentoValor);
 
-        Transaction tx = null;
-        Session session = HibernateUtil.abrirSesion();
-        try {
-            tx = session.beginTransaction();
-
-            Cliente clienteGerenciado = session.get(Cliente.class, cliente.getId());
-            BigDecimal saldoAntes = clienteGerenciado.getSaldo();
+        Cliente clienteGerenciado = BD.transaccion(conexion -> {
+            Cliente gerenciado = clienteDAO.buscarPorId(conexion, cliente.getId());
+            BigDecimal saldoAntes = gerenciado.getSaldo();
             BigDecimal deuda = saldoAntes.max(BigDecimal.ZERO);
             if (descuento.compareTo(deuda) > 0) {
                 throw new IllegalArgumentException(
                         "El descuento no puede ser mayor que la deuda del cliente (Gs. " + deuda + ").");
             }
-            clienteGerenciado.setSaldo(saldoAntes.subtract(valorCheque).subtract(descuento));
-            session.merge(clienteGerenciado);
+            gerenciado.setSaldo(saldoAntes.subtract(valorCheque).subtract(descuento));
+            clienteDAO.guardar(conexion, gerenciado);
 
             ChequePreDatado cheque = new ChequePreDatado();
-            cheque.setCliente(clienteGerenciado);
+            cheque.setCliente(gerenciado);
             cheque.setNumeroCheque(numeroCheque);
             cheque.setBanco(banco);
             cheque.setFechaRegistro(LocalDate.now());
@@ -87,17 +86,11 @@ public class ChequePreDatadoController {
             }
             cheque.setDescripcion(descripcion);
             cheque.setEstado(EstadoCheque.PENDIENTE);
-            session.persist(cheque);
-
-            tx.commit();
-            auditoria.registrar("CHEQUE PRE-DATADO DE CLIENTE", clienteGerenciado.getNombre() + " - "
-                    + AuditoriaController.gs(valorCheque) + " vence " + fechaVencimiento);
-        } catch (RuntimeException e) {
-            Errores.revertir(tx);
-            throw Errores.traducir(e);
-        } finally {
-            session.close();
-        }
+            chequeDAO.guardar(conexion, cheque);
+            return gerenciado;
+        });
+        auditoria.registrar("CHEQUE PRE-DATADO DE CLIENTE", clienteGerenciado.getNombre() + " - "
+                + AuditoriaController.gs(valorCheque) + " vence " + fechaVencimiento);
     }
 
     /**
@@ -123,23 +116,19 @@ public class ChequePreDatadoController {
         validar(valorCheque, fechaVencimiento);
         BigDecimal descuento = validarDescuento(descuentoValor);
 
-        Transaction tx = null;
-        Session session = HibernateUtil.abrirSesion();
-        try {
-            tx = session.beginTransaction();
-
-            Proveedor proveedorGerenciado = session.get(Proveedor.class, proveedor.getId());
-            BigDecimal saldoAntes = proveedorGerenciado.getSaldo();
+        Proveedor proveedorGerenciado = BD.transaccion(conexion -> {
+            Proveedor gerenciado = proveedorDAO.buscarPorId(conexion, proveedor.getId());
+            BigDecimal saldoAntes = gerenciado.getSaldo();
             BigDecimal deuda = saldoAntes.max(BigDecimal.ZERO);
             if (descuento.compareTo(deuda) > 0) {
                 throw new IllegalArgumentException(
                         "El descuento no puede ser mayor que la deuda con el proveedor (Gs. " + deuda + ").");
             }
-            proveedorGerenciado.setSaldo(saldoAntes.subtract(valorCheque).subtract(descuento));
-            session.merge(proveedorGerenciado);
+            gerenciado.setSaldo(saldoAntes.subtract(valorCheque).subtract(descuento));
+            proveedorDAO.guardar(conexion, gerenciado);
 
             ChequePreDatado cheque = new ChequePreDatado();
-            cheque.setProveedor(proveedorGerenciado);
+            cheque.setProveedor(gerenciado);
             cheque.setNumeroCheque(numeroCheque);
             cheque.setBanco(banco);
             cheque.setFechaRegistro(LocalDate.now());
@@ -151,17 +140,11 @@ public class ChequePreDatadoController {
             }
             cheque.setDescripcion(descripcion);
             cheque.setEstado(EstadoCheque.PENDIENTE);
-            session.persist(cheque);
-
-            tx.commit();
-            auditoria.registrar("CHEQUE PRE-DATADO A PROVEEDOR", proveedorGerenciado.getNombre() + " - "
-                    + AuditoriaController.gs(valorCheque) + " vence " + fechaVencimiento);
-        } catch (RuntimeException e) {
-            Errores.revertir(tx);
-            throw Errores.traducir(e);
-        } finally {
-            session.close();
-        }
+            chequeDAO.guardar(conexion, cheque);
+            return gerenciado;
+        });
+        auditoria.registrar("CHEQUE PRE-DATADO A PROVEEDOR", proveedorGerenciado.getNombre() + " - "
+                + AuditoriaController.gs(valorCheque) + " vence " + fechaVencimiento);
     }
 
     /**
@@ -176,57 +159,51 @@ public class ChequePreDatadoController {
             throw new IllegalArgumentException("El cheque es obligatorio.");
         }
 
-        Transaction tx = null;
-        Session session = HibernateUtil.abrirSesion();
-        try {
-            tx = session.beginTransaction();
-
-            ChequePreDatado chequeGerenciado = session.get(ChequePreDatado.class, cheque.getId());
+        String[] descripcionAuditoria = new String[1];
+        MovimientoFinanciero movimiento = BD.transaccion(conexion -> {
+            ChequePreDatado chequeGerenciado = chequeDAO.buscarPorId(conexion, cheque.getId());
             if (chequeGerenciado == null) {
-                tx.commit();
-                return;
+                return null;
             }
             if (chequeGerenciado.getEstado() == EstadoCheque.CONFIRMADO) {
                 throw new IllegalStateException("Ese cheque ya fue confirmado.");
             }
             chequeGerenciado.setEstado(EstadoCheque.CONFIRMADO);
             chequeGerenciado.setFechaConfirmacion(LocalDate.now());
-            session.merge(chequeGerenciado);
+            chequeDAO.guardar(conexion, chequeGerenciado);
 
-            MovimientoFinanciero movimiento = new MovimientoFinanciero();
-            movimiento.setFecha(LocalDate.now());
+            MovimientoFinanciero nuevo = new MovimientoFinanciero();
+            nuevo.setFecha(LocalDate.now());
             String origen;
             if (chequeGerenciado.getCliente() != null) {
-                movimiento.setTipo(TipoMovimientoFinanciero.ENTRADA);
-                movimiento.setCategoria(CategoriaMovimientoFinanciero.PAGO_CLIENTE);
-                movimiento.setCliente(chequeGerenciado.getCliente());
+                nuevo.setTipo(TipoMovimientoFinanciero.ENTRADA);
+                nuevo.setCategoria(CategoriaMovimientoFinanciero.PAGO_CLIENTE);
+                nuevo.setCliente(chequeGerenciado.getCliente());
                 origen = chequeGerenciado.getCliente().getNombre();
             } else {
-                movimiento.setTipo(TipoMovimientoFinanciero.SALIDA);
-                movimiento.setCategoria(CategoriaMovimientoFinanciero.COMPRA_PROVEEDOR);
-                movimiento.setProveedor(chequeGerenciado.getProveedor());
+                nuevo.setTipo(TipoMovimientoFinanciero.SALIDA);
+                nuevo.setCategoria(CategoriaMovimientoFinanciero.COMPRA_PROVEEDOR);
+                nuevo.setProveedor(chequeGerenciado.getProveedor());
                 origen = chequeGerenciado.getProveedor().getNombre();
             }
-            movimiento.setValor(chequeGerenciado.getValor());
-            movimiento.setDescuentoValor(chequeGerenciado.getDescuentoValor());
-            movimiento.setDescuentoPorcentaje(chequeGerenciado.getDescuentoPorcentaje());
+            nuevo.setValor(chequeGerenciado.getValor());
+            nuevo.setDescuentoValor(chequeGerenciado.getDescuentoValor());
+            nuevo.setDescuentoPorcentaje(chequeGerenciado.getDescuentoPorcentaje());
             String numero = chequeGerenciado.getNumeroCheque();
             String descripcionBase = "Cheque pre-datado"
                     + (numero == null || numero.isBlank() ? "" : " Nº " + numero)
                     + " (" + origen + ")";
+            descripcionAuditoria[0] = descripcionBase;
             String descripcionExtra = chequeGerenciado.getDescripcion();
-            movimiento.setDescripcion(descripcionExtra == null || descripcionExtra.isBlank()
+            nuevo.setDescripcion(descripcionExtra == null || descripcionExtra.isBlank()
                     ? descripcionBase
                     : descripcionBase + " - " + descripcionExtra);
-            session.persist(movimiento);
-
-            tx.commit();
-            auditoria.registrar("CHEQUE CONFIRMADO", descripcionBase + " - " + AuditoriaController.gs(movimiento.getValor()));
-        } catch (RuntimeException e) {
-            Errores.revertir(tx);
-            throw Errores.traducir(e);
-        } finally {
-            session.close();
+            movimientoDAO.guardar(conexion, nuevo);
+            return nuevo;
+        });
+        if (movimiento != null) {
+            auditoria.registrar("CHEQUE CONFIRMADO", descripcionAuditoria[0] + " - "
+                    + AuditoriaController.gs(movimiento.getValor()));
         }
     }
 

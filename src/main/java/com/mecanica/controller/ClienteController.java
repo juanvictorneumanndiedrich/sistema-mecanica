@@ -1,16 +1,14 @@
 package com.mecanica.controller;
 
 import com.mecanica.dao.ClienteDAO;
+import com.mecanica.dao.MovimientoFinancieroDAO;
 import com.mecanica.enums.CategoriaMovimientoFinanciero;
 import com.mecanica.enums.Permiso;
 import com.mecanica.enums.TipoMovimientoFinanciero;
 import com.mecanica.model.Cliente;
 import com.mecanica.model.MovimientoFinanciero;
-import com.mecanica.util.Errores;
-import com.mecanica.util.HibernateUtil;
+import com.mecanica.util.BD;
 import com.mecanica.util.Sesion;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -21,12 +19,13 @@ import java.util.List;
  * Controller de Cliente: recibe llamadas de la View, aplica las reglas de
  * negocio y delega al DAO. Las operaciones simples (CRUD) solo llaman al
  * ClienteDAO; las operaciones que tocan mas de una entidad a la vez
- * (como registrar un pago) abren su propia Session/Transaction aca,
+ * (como registrar un pago) abren su propia transaccion aca (BD.transaccion),
  * para garantizar que todo pase junto o no pase nada.
  */
 public class ClienteController {
 
     private final ClienteDAO clienteDAO = new ClienteDAO();
+    private final MovimientoFinancieroDAO movimientoDAO = new MovimientoFinancieroDAO();
     private final AuditoriaController auditoria = new AuditoriaController();
 
     public Cliente guardar(Cliente cliente) {
@@ -91,20 +90,16 @@ public class ClienteController {
             throw new IllegalArgumentException("El descuento no puede ser negativo.");
         }
 
-        Transaction tx = null;
-        Session session = HibernateUtil.abrirSesion();
-        try {
-            tx = session.beginTransaction();
-
-            Cliente clienteGerenciado = session.get(Cliente.class, cliente.getId());
-            BigDecimal saldoAntes = clienteGerenciado.getSaldo();
+        Cliente clienteGerenciado = BD.transaccion(conexion -> {
+            Cliente gerenciado = clienteDAO.buscarPorId(conexion, cliente.getId());
+            BigDecimal saldoAntes = gerenciado.getSaldo();
             BigDecimal deuda = saldoAntes.max(BigDecimal.ZERO);
             if (descuento.compareTo(deuda) > 0) {
                 throw new IllegalArgumentException(
                         "El descuento no puede ser mayor que la deuda del cliente (Gs. " + deuda + ").");
             }
-            clienteGerenciado.setSaldo(saldoAntes.subtract(valorPagado).subtract(descuento));
-            session.merge(clienteGerenciado);
+            gerenciado.setSaldo(saldoAntes.subtract(valorPagado).subtract(descuento));
+            clienteDAO.guardar(conexion, gerenciado);
 
             MovimientoFinanciero movimiento = new MovimientoFinanciero();
             movimiento.setFecha(LocalDate.now());
@@ -119,19 +114,13 @@ public class ClienteController {
                 }
             }
             movimiento.setDescripcion(descripcion);
-            movimiento.setCliente(clienteGerenciado);
-            session.persist(movimiento);
-
-            tx.commit();
-            auditoria.registrar("PAGO DE CLIENTE", clienteGerenciado.getNombre() + " - pago "
-                    + AuditoriaController.gs(valorPagado)
-                    + (descuento.compareTo(BigDecimal.ZERO) > 0 ? " + descuento " + AuditoriaController.gs(descuento) : ""));
-        } catch (RuntimeException e) {
-            Errores.revertir(tx);
-            throw Errores.traducir(e);
-        } finally {
-            session.close();
-        }
+            movimiento.setCliente(gerenciado);
+            movimientoDAO.guardar(conexion, movimiento);
+            return gerenciado;
+        });
+        auditoria.registrar("PAGO DE CLIENTE", clienteGerenciado.getNombre() + " - pago "
+                + AuditoriaController.gs(valorPagado)
+                + (descuento.compareTo(BigDecimal.ZERO) > 0 ? " + descuento " + AuditoriaController.gs(descuento) : ""));
     }
 
     /**
@@ -149,13 +138,9 @@ public class ClienteController {
             throw new IllegalArgumentException("El valor a retirar debe ser mayor que cero.");
         }
 
-        Transaction tx = null;
-        Session session = HibernateUtil.abrirSesion();
-        try {
-            tx = session.beginTransaction();
-
-            Cliente clienteGerenciado = session.get(Cliente.class, cliente.getId());
-            BigDecimal credito = clienteGerenciado.getSaldo().negate();
+        Cliente clienteGerenciado = BD.transaccion(conexion -> {
+            Cliente gerenciado = clienteDAO.buscarPorId(conexion, cliente.getId());
+            BigDecimal credito = gerenciado.getSaldo().negate();
             if (credito.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new IllegalArgumentException("El cliente no tiene credito a favor para retirar.");
             }
@@ -163,8 +148,8 @@ public class ClienteController {
                 throw new IllegalArgumentException(
                         "El valor a retirar no puede ser mayor que el credito disponible (Gs. " + credito + ").");
             }
-            clienteGerenciado.setSaldo(clienteGerenciado.getSaldo().add(valor));
-            session.merge(clienteGerenciado);
+            gerenciado.setSaldo(gerenciado.getSaldo().add(valor));
+            clienteDAO.guardar(conexion, gerenciado);
 
             MovimientoFinanciero movimiento = new MovimientoFinanciero();
             movimiento.setFecha(LocalDate.now());
@@ -172,18 +157,12 @@ public class ClienteController {
             movimiento.setCategoria(CategoriaMovimientoFinanciero.DEVOLUCION_CLIENTE);
             movimiento.setValor(valor);
             movimiento.setDescripcion(descripcion);
-            movimiento.setCliente(clienteGerenciado);
-            session.persist(movimiento);
-
-            tx.commit();
-            auditoria.registrar("SALDO RETIRADO (CLIENTE)",
-                    clienteGerenciado.getNombre() + " - " + AuditoriaController.gs(valor));
-        } catch (RuntimeException e) {
-            Errores.revertir(tx);
-            throw Errores.traducir(e);
-        } finally {
-            session.close();
-        }
+            movimiento.setCliente(gerenciado);
+            movimientoDAO.guardar(conexion, movimiento);
+            return gerenciado;
+        });
+        auditoria.registrar("SALDO RETIRADO (CLIENTE)",
+                clienteGerenciado.getNombre() + " - " + AuditoriaController.gs(valor));
     }
 
     private void validar(Cliente cliente) {
