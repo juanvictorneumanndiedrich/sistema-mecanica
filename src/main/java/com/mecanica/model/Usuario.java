@@ -57,6 +57,12 @@ public class Usuario {
 
     private boolean permisoRetirarSaldo;
 
+    /** Ayuda en pantalla (boton "?", explicaciones al pasar el mouse): cada usuario la prende o la apaga. */
+    private boolean mostrarAyuda = true;
+
+    /** true cuando al usuario ya se le ofrecio el recorrido de bienvenida (para no ofrecerlo en cada ingreso). */
+    private boolean tourVisto;
+
 
     public Usuario() {
     }
@@ -219,6 +225,22 @@ public class Usuario {
 
     public void setPermisoRetirarSaldo(boolean permisoRetirarSaldo) {
         this.permisoRetirarSaldo = permisoRetirarSaldo;
+    }
+
+    public boolean isMostrarAyuda() {
+        return mostrarAyuda;
+    }
+
+    public void setMostrarAyuda(boolean mostrarAyuda) {
+        this.mostrarAyuda = mostrarAyuda;
+    }
+
+    public boolean isTourVisto() {
+        return tourVisto;
+    }
+
+    public void setTourVisto(boolean tourVisto) {
+        this.tourVisto = tourVisto;
     }
 
     /** Valor guardado del permiso (sin mirar el area de la que depende -- para eso, Sesion.tiene). */

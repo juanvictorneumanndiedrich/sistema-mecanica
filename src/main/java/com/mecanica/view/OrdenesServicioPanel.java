@@ -70,6 +70,15 @@ public class OrdenesServicioPanel extends JPanel implements PanelActualizable {
         // Permiso (ver enums.Permiso): sin el, el boton no aparece.
         botonCancelar.setVisible(Sesion.tiene(Permiso.CANCELAR_OS));
 
+        // Explicaciones al pasar el mouse (ver Ayuda).
+        Ayuda.tooltip(comboFiltroEstado, "Mostrar solo las OS en ese estado.");
+        Ayuda.tooltip(campoBusquedaCliente, "Escriba parte del nombre del cliente y presione ENTER.");
+        Ayuda.tooltip(botonVerEditar, "Ver la OS seleccionada y agregar o quitar servicios y repuestos.");
+        Ayuda.tooltip(botonCerrar, "Trabajo terminado: el total de la OS se suma a la cuenta (saldo) del cliente. "
+                + "Despues no vuelve a quedar abierta.");
+        Ayuda.tooltip(botonCancelar, "El trabajo no se va a hacer: la OS queda cancelada y no se le cobra al cliente.");
+        Ayuda.tooltip(botonImprimir, "Hoja de la OS para imprimir y entregar.");
+
         actualizarEstadoBotones();
         cargarOrdenes();
     }
@@ -94,6 +103,7 @@ public class OrdenesServicioPanel extends JPanel implements PanelActualizable {
         encabezado.add(titulo, BorderLayout.WEST);
 
         BotonPlano botonNuevaOS = new BotonPlano("NUEVA OS");
+        Ayuda.tooltip(botonNuevaOS, "Abrir un trabajo nuevo: cliente, maquinario (opcional) y problema.");
         botonNuevaOS.addActionListener(e -> onNuevaOS());
         encabezado.add(botonNuevaOS, BorderLayout.EAST);
         panel.add(encabezado, BorderLayout.NORTH);

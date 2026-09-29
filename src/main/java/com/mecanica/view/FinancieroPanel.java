@@ -116,6 +116,16 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         }
         add(pestañas, BorderLayout.CENTER);
 
+        // Explicaciones al pasar el mouse (ver Ayuda).
+        Ayuda.tooltip(campoFechaInicio, "Fecha inicial, en formato dd/mm/aaaa.");
+        Ayuda.tooltip(campoFechaFin, "Fecha final, en formato dd/mm/aaaa.");
+        Ayuda.tooltip(botonConfirmarCheque, "El cheque seleccionado ya se cobro: recien ahora el dinero "
+                + "entra (o sale) en Financiero.");
+        Ayuda.tooltip(campoDescripcionCierre, "Opcional. Por ejemplo: Septiembre 2026.");
+        Ayuda.tooltip(botonCerrarMes, "Cierra el mes con los movimientos marcados: calcula la ganancia y la "
+                + "reparte 50/50 entre los socios. Los movimientos marcados quedan bloqueados.");
+        Ayuda.tooltip(botonImprimirCierre, "Imprimir el acerto (reparto entre los socios) del cierre seleccionado.");
+
         buscarMovimientos();
         cargarChequesPendientes();
         cargarPendientesCierre();
@@ -152,6 +162,8 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         encabezado.setOpaque(false);
 
         BotonPlano botonNuevoMovimiento = new BotonPlano("NUEVO MOVIMIENTO");
+        Ayuda.tooltip(botonNuevoMovimiento, "Registrar a mano una entrada o un gasto que no viene de otra pantalla "
+                + "(ej.: luz, alquiler).");
         botonNuevoMovimiento.addActionListener(e -> onNuevoMovimiento());
         botonNuevoMovimiento.setVisible(Sesion.tiene(Permiso.MOVIMIENTO_MANUAL));
         encabezado.add(botonNuevoMovimiento, BorderLayout.EAST);
@@ -180,6 +192,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         panel.add(panelTipo);
 
         BotonPlano botonFiltrar = new BotonPlano("FILTRAR");
+        Ayuda.tooltip(botonFiltrar, "Buscar los movimientos entre las fechas DESDE y HASTA, del tipo elegido.");
         botonFiltrar.addActionListener(e -> buscarMovimientos());
         JPanel panelBoton = new JPanel(new BorderLayout());
         panelBoton.setOpaque(false);
@@ -189,6 +202,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         panel.add(panelBoton);
 
         BotonPlano botonImprimirMovimientos = new BotonPlano("IMPRIMIR", Paleta.GRIS_TEXTO, Paleta.GRIS_TEXTO.brighter());
+        Ayuda.tooltip(botonImprimirMovimientos, "Reporte de los movimientos filtrados, para imprimir.");
         botonImprimirMovimientos.addActionListener(e -> onImprimirMovimientos());
         JPanel panelBotonImprimir = new JPanel(new BorderLayout());
         panelBotonImprimir.setOpaque(false);
@@ -266,6 +280,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
 
         botonConfirmarCheque.addActionListener(e -> onConfirmarCheque());
         BotonPlano botonImprimirCheques = new BotonPlano("IMPRIMIR LISTADO", Paleta.GRIS_TEXTO, Paleta.GRIS_TEXTO.brighter());
+        Ayuda.tooltip(botonImprimirCheques, "Lista de los cheques pendientes, para imprimir.");
         botonImprimirCheques.addActionListener(e ->
                 VisorReporte.mostrar(this, "Cheques Pendientes", reporteController::chequesPendientes));
         JPanel accionesCheques = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));

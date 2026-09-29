@@ -167,6 +167,7 @@ public class PagoClienteDialog extends JDialog {
         formulario.add(labelValor, gbc);
 
         estilizarCampo(campoValor);
+        Ayuda.tooltip(campoValor, "Cuanto dinero el cliente entrega ahora. Puede ser menos que el saldo (pago parcial).");
         gbc.gridy = 5;
         gbc.insets = new Insets(4, 0, 0, 0);
         formulario.add(campoValor, gbc);
@@ -187,6 +188,9 @@ public class PagoClienteDialog extends JDialog {
         checkChequePreDatado.setFont(new Font("Segoe UI", Font.BOLD, 11));
         checkChequePreDatado.setForeground(Paleta.GRIS_TEXTO);
         checkChequePreDatado.addActionListener(e -> alternarPanelCheque());
+        Ayuda.tooltip(checkChequePreDatado, "Marque si el pago es con un cheque para una fecha futura. El saldo "
+                + "baja ahora; el dinero entra en Financiero cuando se confirma el cheque "
+                + "(Financiero > Cheques Pendientes).");
         gbc.gridy = 9;
         gbc.insets = new Insets(16, 0, 0, 0);
         formulario.add(checkChequePreDatado, gbc);
@@ -283,6 +287,8 @@ public class PagoClienteDialog extends JDialog {
 
         ButtonGroup grupo = new ButtonGroup();
         grupo.add(radioDescuentoPorcentaje);
+        Ayuda.tooltip(radioDescuentoPorcentaje, "Descuento en porcentaje, calculado sobre el saldo actual.");
+        Ayuda.tooltip(radioDescuentoValor, "Descuento de un monto fijo en guaranies, que se perdona del saldo.");
         grupo.add(radioDescuentoValor);
         JPanel panelRadios = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         panelRadios.setOpaque(false);

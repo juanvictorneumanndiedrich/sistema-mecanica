@@ -77,6 +77,18 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
         botonEliminarMaquinario.setVisible(eliminar);
         botonRetirarSaldoCliente.setVisible(Sesion.tiene(Permiso.RETIRAR_SALDO));
 
+        // Explicaciones al pasar el mouse (ver Ayuda).
+        Ayuda.tooltip(campoBusqueda, "Escriba parte del nombre y presione ENTER. Vacio y ENTER muestra todos.");
+        Ayuda.tooltip(botonEditarCliente, "Cambiar los datos del cliente seleccionado.");
+        Ayuda.tooltip(botonEliminarCliente, "Borrar el cliente seleccionado.");
+        Ayuda.tooltip(botonPagoCliente, "El cliente entrega dinero (efectivo o cheque pre-datado). "
+                + "Baja su saldo y entra en Financiero. Se puede aplicar un descuento.");
+        Ayuda.tooltip(botonRetirarSaldoCliente, "Solo si el cliente tiene credito a favor (saldo en verde): "
+                + "se le devuelve ese dinero y sale como gasto en Financiero.");
+        Ayuda.tooltip(botonNuevoMaquinario, "Agregar un camion, tractor, etc. al cliente seleccionado.");
+        Ayuda.tooltip(botonEditarMaquinario, "Cambiar los datos del maquinario seleccionado.");
+        Ayuda.tooltip(botonEliminarMaquinario, "Borrar el maquinario seleccionado.");
+
         cargarClientes(null);
     }
 
@@ -102,8 +114,10 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
         encabezado.add(titulo, BorderLayout.WEST);
 
         BotonPlano botonNuevoCliente = new BotonPlano("NUEVO CLIENTE");
+        Ayuda.tooltip(botonNuevoCliente, "Cargar un cliente nuevo.");
         botonNuevoCliente.addActionListener(e -> onNuevoCliente());
         BotonPlano botonImprimirClientes = new BotonPlano("IMPRIMIR LISTADO", Paleta.GRIS_TEXTO, Paleta.GRIS_TEXTO.brighter());
+        Ayuda.tooltip(botonImprimirClientes, "Lista de todos los clientes con su saldo, para imprimir.");
         botonImprimirClientes.addActionListener(e ->
                 VisorReporte.mostrar(this, "Listado de Clientes", reporteController::listadoClientes));
         JPanel accionesEncabezado = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));

@@ -94,6 +94,21 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
         botonEliminarCompra.setVisible(eliminar);
         botonRetirarSaldoProveedor.setVisible(Sesion.tiene(Permiso.RETIRAR_SALDO));
 
+        // Explicaciones al pasar el mouse (ver Ayuda).
+        Ayuda.tooltip(campoBusqueda, "Escriba parte del nombre y presione ENTER. Vacio y ENTER muestra todos.");
+        Ayuda.tooltip(botonEditarProveedor, "Cambiar los datos del proveedor seleccionado.");
+        Ayuda.tooltip(botonEliminarProveedor, "Borrar el proveedor seleccionado.");
+        Ayuda.tooltip(botonPagoProveedor, "El taller le paga al proveedor (efectivo o cheque pre-datado). "
+                + "Baja la deuda y sale como gasto en Financiero.");
+        Ayuda.tooltip(botonRetirarSaldoProveedor, "Solo si el taller pago de mas: el proveedor devuelve ese "
+                + "dinero y entra en Financiero.");
+        Ayuda.tooltip(botonNuevaCompra, "Abrir una nota de compra nueva para el proveedor seleccionado "
+                + "(numero automatico) y cargar lo que se compro.");
+        Ayuda.tooltip(botonVerEditarCompra, "Ver la nota seleccionada y agregar o quitar items. "
+                + "Una nota ya pagada solo se puede ver.");
+        Ayuda.tooltip(botonEliminarCompra, "Borrar la nota seleccionada (solo si no esta pagada). "
+                + "Su valor se descuenta de la deuda con el proveedor.");
+
         cargarProveedores(null);
     }
 
@@ -119,8 +134,10 @@ public class ComprasProveedoresPanel extends JPanel implements PanelActualizable
         encabezado.add(titulo, BorderLayout.WEST);
 
         BotonPlano botonNuevoProveedor = new BotonPlano("NUEVO PROVEEDOR");
+        Ayuda.tooltip(botonNuevoProveedor, "Cargar un proveedor nuevo.");
         botonNuevoProveedor.addActionListener(e -> onNuevoProveedor());
         BotonPlano botonImprimirProveedores = new BotonPlano("IMPRIMIR LISTADO", Paleta.GRIS_TEXTO, Paleta.GRIS_TEXTO.brighter());
+        Ayuda.tooltip(botonImprimirProveedores, "Lista de todos los proveedores con su saldo, para imprimir.");
         botonImprimirProveedores.addActionListener(e ->
                 VisorReporte.mostrar(this, "Listado de Proveedores", reporteController::listadoProveedores));
         JPanel accionesEncabezado = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));

@@ -209,3 +209,9 @@ CREATE TABLE IF NOT EXISTS registro_auditoria (
     usuario_login varchar(60),
     usuario_nombre varchar(120)
 );
+
+-- Ayuda en pantalla (agregado despues): columnas nuevas de usuario. En una
+-- base que ya las tiene no hace nada; en una base anterior las agrega, con
+-- la ayuda prendida para todos.
+ALTER TABLE usuario ADD COLUMN IF NOT EXISTS mostrar_ayuda boolean DEFAULT true NOT NULL;
+ALTER TABLE usuario ADD COLUMN IF NOT EXISTS tour_visto boolean DEFAULT false NOT NULL;

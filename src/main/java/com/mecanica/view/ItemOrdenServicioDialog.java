@@ -177,6 +177,7 @@ public class ItemOrdenServicioDialog extends JDialog {
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
         comboTipo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        Ayuda.tooltip(comboTipo, "SERVICIO = mano de obra del taller. REPUESTO = pieza o material.");
         campoDescripcion.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         campoCantidad.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         campoValorUnitario.setFont(new Font("Segoe UI", Font.PLAIN, 13));
@@ -242,6 +243,7 @@ public class ItemOrdenServicioDialog extends JDialog {
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         botones.setOpaque(false);
         botonQuitar.addActionListener(e -> onQuitarItem());
+        Ayuda.tooltip(botonQuitar, "Quitar de la OS el item seleccionado en la lista.");
         botonImprimir.addActionListener(e -> onImprimir());
         botonVolver.addActionListener(e -> dispose());
         botones.add(botonQuitar);

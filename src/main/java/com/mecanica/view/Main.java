@@ -50,6 +50,8 @@ public class Main {
         MainView ventana = new MainView(usuario);
         ventana.setVisible(true);
         ControlInactividad.iniciar(ventana::cerrarPorInactividad);
+        // primer ingreso del usuario: ofrece el recorrido de bienvenida (ver MainView)
+        SwingUtilities.invokeLater(ventana::ofrecerRecorridoSiCorresponde);
     }
 
     /**

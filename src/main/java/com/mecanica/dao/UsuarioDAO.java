@@ -1,6 +1,7 @@
 package com.mecanica.dao;
 
 import com.mecanica.model.Usuario;
+import com.mecanica.util.BD;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -20,7 +21,7 @@ public class UsuarioDAO extends AbstractGenericDAO<Usuario, Long> {
                 "permiso_financiero", "permiso_empleados_socios", "permiso_usuarios",
                 "permiso_socios", "permiso_editar_empleados", "permiso_retiros_empleado", "permiso_pagar_salario",
                 "permiso_cierre_mensual", "permiso_movimiento_manual", "permiso_eliminar_registros",
-                "permiso_cancelar_os", "permiso_retirar_saldo"};
+                "permiso_cancelar_os", "permiso_retirar_saldo", "mostrar_ayuda", "tour_visto"};
     }
 
     @Override
@@ -30,7 +31,8 @@ public class UsuarioDAO extends AbstractGenericDAO<Usuario, Long> {
                 u.isPermisoFinanciero(), u.isPermisoEmpleadosSocios(), u.isPermisoUsuarios(),
                 u.isPermisoSocios(), u.isPermisoEditarEmpleados(), u.isPermisoRetirosEmpleado(),
                 u.isPermisoPagarSalario(), u.isPermisoCierreMensual(), u.isPermisoMovimientoManual(),
-                u.isPermisoEliminarRegistros(), u.isPermisoCancelarOs(), u.isPermisoRetirarSaldo()};
+                u.isPermisoEliminarRegistros(), u.isPermisoCancelarOs(), u.isPermisoRetirarSaldo(),
+                u.isMostrarAyuda(), u.isTourVisto()};
     }
 
     @Override
@@ -55,6 +57,8 @@ public class UsuarioDAO extends AbstractGenericDAO<Usuario, Long> {
         u.setPermisoEliminarRegistros(rs.getBoolean("permiso_eliminar_registros"));
         u.setPermisoCancelarOs(rs.getBoolean("permiso_cancelar_os"));
         u.setPermisoRetirarSaldo(rs.getBoolean("permiso_retirar_saldo"));
+        u.setMostrarAyuda(rs.getBoolean("mostrar_ayuda"));
+        u.setTourVisto(rs.getBoolean("tour_visto"));
         return u;
     }
 
@@ -71,6 +75,15 @@ public class UsuarioDAO extends AbstractGenericDAO<Usuario, Long> {
     /** Se usa en la pantalla de login. */
     public Usuario buscarPorLogin(String login) {
         return primero("WHERE login = ?", login);
+    }
+
+    /**
+     * Guarda solo las dos opciones de la ayuda en pantalla, sin tocar el resto
+     * del usuario (clave, permisos...).
+     */
+    public void guardarOpcionesAyuda(Long id, boolean mostrarAyuda, boolean tourVisto) {
+        BD.ejecutarEnTransaccion(conexion -> BD.actualizar(conexion,
+                "UPDATE usuario SET mostrar_ayuda = ?, tour_visto = ? WHERE id = ?", mostrarAyuda, tourVisto, id));
     }
 
     public List<Usuario> listarActivos() {

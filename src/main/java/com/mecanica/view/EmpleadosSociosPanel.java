@@ -97,6 +97,24 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
         add(pestanias, BorderLayout.CENTER);
 
         aplicarPermisos();
+
+        // Explicaciones al pasar el mouse (ver Ayuda).
+        Ayuda.tooltip(botonNuevoEmpleado, "Cargar un empleado nuevo, con su salario base.");
+        Ayuda.tooltip(botonEditarEmpleado, "Cambiar los datos del empleado seleccionado.");
+        Ayuda.tooltip(botonEliminarEmpleado, "Borrar el empleado seleccionado.");
+        Ayuda.tooltip(botonRetiroEmpleado, "Vale o adelanto del empleado. No sale de Financiero ahora: "
+                + "se descuenta cuando se paga el salario.");
+        Ayuda.tooltip(botonRecibos, "Pagos de salario ya hechos, para imprimir el recibo.");
+        Ayuda.tooltip(campoInicioEmpleado, "Inicio del periodo, en formato dd/mm/aaaa.");
+        Ayuda.tooltip(campoFinEmpleado, "Fin del periodo, en formato dd/mm/aaaa.");
+        Ayuda.tooltip(botonCalcularCierre, "Mostrar salario, vales/adelantos del periodo y lo que queda por pagar.");
+        Ayuda.tooltip(botonPagarSalario, "Registrar el salario como gasto en Financiero y marcar los vales "
+                + "del periodo como ya descontados.");
+        Ayuda.tooltip(botonEditarSocio, "Cambiar los datos del socio seleccionado.");
+        Ayuda.tooltip(botonEliminarSocio, "Borrar el socio seleccionado.");
+        Ayuda.tooltip(botonRetiroSocio, "El socio saca dinero a cuenta de su ganancia. Se le descuenta "
+                + "en el proximo Cierre Mensual.");
+
         actualizarEstadoBotonesEmpleado();
         actualizarEstadoBotonesSocio();
 
@@ -141,6 +159,7 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
 
         botonNuevoEmpleado.addActionListener(e -> onNuevoEmpleado());
         BotonPlano botonImprimirEmpleados = new BotonPlano("IMPRIMIR LISTADO", Paleta.GRIS_TEXTO, Paleta.GRIS_TEXTO.brighter());
+        Ayuda.tooltip(botonImprimirEmpleados, "Lista de los empleados, para imprimir.");
         botonImprimirEmpleados.addActionListener(e ->
                 VisorReporte.mostrar(this, "Listado de Empleados", reporteController::listadoEmpleados));
         JPanel accionesEncabezado = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
@@ -246,6 +265,7 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
         encabezado.add(titulo, BorderLayout.WEST);
 
         BotonPlano botonNuevoSocio = new BotonPlano("NUEVO SOCIO");
+        Ayuda.tooltip(botonNuevoSocio, "Cargar un socio nuevo.");
         botonNuevoSocio.addActionListener(e -> onNuevoSocio());
         encabezado.add(botonNuevoSocio, BorderLayout.EAST);
         panel.add(encabezado, BorderLayout.NORTH);

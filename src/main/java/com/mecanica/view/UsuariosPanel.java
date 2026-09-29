@@ -47,6 +47,11 @@ public class UsuariosPanel extends JPanel implements PanelActualizable {
 
         actualizarEstadoBotones();
         cargarUsuarios();
+
+        // Explicaciones al pasar el mouse (ver Ayuda).
+        Ayuda.tooltip(botonEditar, "Cambiar datos y permisos del usuario seleccionado, o desactivarlo.");
+        Ayuda.tooltip(botonCambiarClave, "Poner una contrasena nueva al usuario seleccionado.");
+        Ayuda.tooltip(botonEliminar, "Borrar el usuario seleccionado.");
     }
 
     /** Recarga la lista de usuarios al entrar en esta area. */
@@ -66,8 +71,10 @@ public class UsuariosPanel extends JPanel implements PanelActualizable {
         encabezado.add(titulo, BorderLayout.WEST);
 
         BotonPlano botonNuevo = new BotonPlano("NUEVO USUARIO");
+        Ayuda.tooltip(botonNuevo, "Crear un usuario nuevo y elegir que puede usar.");
         botonNuevo.addActionListener(e -> onNuevoUsuario());
         BotonPlano botonActividad = new BotonPlano("REGISTRO DE ACTIVIDAD", Paleta.GRIS_TEXTO, Paleta.GRIS_TEXTO.brighter());
+        Ayuda.tooltip(botonActividad, "Quien hizo que y cuando en el sistema.");
         botonActividad.addActionListener(e -> new RegistroActividadDialog(ventana()).setVisible(true));
         JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         acciones.setOpaque(false);

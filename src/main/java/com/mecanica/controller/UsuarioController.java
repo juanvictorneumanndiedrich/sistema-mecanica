@@ -185,6 +185,18 @@ public class UsuarioController {
         return hashClave(claveEnTextoPlano).equals(usuario.getClave()) ? usuario : null;
     }
 
+    /**
+     * Guarda las opciones de ayuda en pantalla del usuario logueado (prender o
+     * apagar la ayuda, y si ya se le ofrecio el recorrido de bienvenida). No
+     * pide ningun permiso: cada uno maneja su propia ayuda.
+     */
+    public void guardarOpcionesAyuda(Usuario usuario) {
+        if (usuario == null || usuario.getId() == null) {
+            return;
+        }
+        usuarioDAO.guardarOpcionesAyuda(usuario.getId(), usuario.isMostrarAyuda(), usuario.isTourVisto());
+    }
+
     public Usuario buscarPorId(Long id) {
         return usuarioDAO.buscarPorId(id);
     }

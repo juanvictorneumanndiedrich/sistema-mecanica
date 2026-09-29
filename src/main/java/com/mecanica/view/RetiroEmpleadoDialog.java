@@ -84,6 +84,7 @@ public class RetiroEmpleadoDialog extends JDialog {
         formulario.add(labelEmpleado, gbc);
 
         comboTipo.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        Ayuda.tooltip(comboTipo, "Tipo de retiro. Todos se descuentan del salario cuando se paga.");
 
         int fila = agregarEtiqueta(formulario, gbc, 1, "TIPO *");
         gbc.gridy = fila++;
