@@ -15,6 +15,8 @@ import java.awt.*;
 public class ClienteFormDialog extends JDialog {
 
     private final JTextField campoNombre = new JTextField();
+    /** Valor que se guarda cuando el documento (CI/RUC) se deja vacio. */
+    private static final String DOCUMENTO_POR_DEFECTO = "Sin documento";
     private final JTextField campoDocumento = new JTextField();
     private final JTextField campoTelefono = new JTextField();
     private final JTextField campoDireccion = new JTextField();
@@ -57,7 +59,7 @@ public class ClienteFormDialog extends JDialog {
         gbc.anchor = GridBagConstraints.WEST;
 
         int fila = agregarCampo(formulario, gbc, 0, "NOMBRE *", campoNombre);
-        fila = agregarCampo(formulario, gbc, fila, "DOCUMENTO (CI/RUC) *", campoDocumento);
+        fila = agregarCampo(formulario, gbc, fila, "DOCUMENTO (CI/RUC)", campoDocumento);
         fila = agregarCampo(formulario, gbc, fila, "TELEFONO", campoTelefono);
         fila = agregarCampo(formulario, gbc, fila, "DIRECCION", campoDireccion);
 
@@ -110,7 +112,7 @@ public class ClienteFormDialog extends JDialog {
             return;
         }
         campoNombre.setText(cliente.getNombre());
-        campoDocumento.setText(cliente.getDocumento());
+        campoDocumento.setText(DOCUMENTO_POR_DEFECTO.equals(cliente.getDocumento()) ? "" : cliente.getDocumento());
         campoTelefono.setText(cliente.getTelefono());
         campoDireccion.setText(cliente.getDireccion());
     }
@@ -123,17 +125,8 @@ public class ClienteFormDialog extends JDialog {
             labelError.setText("Debe ingresar el nombre del cliente.");
             return;
         }
-        if (!Validaciones.nombreORazonSocial(nombre)) {
-            labelError.setText("El nombre no puede contener simbolos (se permite punto, guion y apostrofe).");
-            return;
-        }
-
         String documento = campoDocumento.getText().trim();
-        if (Validaciones.esVacio(documento)) {
-            labelError.setText("Debe ingresar el documento (CI/RUC) del cliente.");
-            return;
-        }
-        if (!Validaciones.documentoValido(documento)) {
+        if (!documento.isEmpty() && !Validaciones.documentoValido(documento)) {
             labelError.setText("El documento debe contener solo numeros, con un guion opcional (ej: 80012345-6).");
             return;
         }
@@ -148,7 +141,7 @@ public class ClienteFormDialog extends JDialog {
             cliente = new Cliente();
         }
         cliente.setNombre(nombre);
-        cliente.setDocumento(documento);
+        cliente.setDocumento(documento.isEmpty() ? DOCUMENTO_POR_DEFECTO : documento);
         cliente.setTelefono(vacioComoNull(telefono));
         cliente.setDireccion(vacioComoNull(campoDireccion.getText()));
 

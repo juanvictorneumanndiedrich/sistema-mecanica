@@ -11,6 +11,8 @@ import com.mecanica.model.OrdenDeServicio;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableColumnModel;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
@@ -59,6 +61,7 @@ public class ItemOrdenServicioDialog extends JDialog {
     private final JLabel labelErrorItem = new JLabel(" ");
 
     private final BotonPlano botonAgregar = new BotonPlano("AGREGAR ITEM");
+    private final BotonPlano botonEditar = new BotonPlano("EDITAR ITEM");
     private final BotonPlano botonQuitar = new BotonPlano("QUITAR ITEM", Paleta.ROJO_ERROR, Paleta.ROJO_ERROR.brighter());
     private final BotonPlano botonImprimir = new BotonPlano("IMPRIMIR", Paleta.GRIS_TEXTO, Paleta.GRIS_TEXTO.brighter());
     private final BotonPlano botonVolver = new BotonPlano("VOLVER", Paleta.GRIS_DESHABILITADO, Paleta.GRIS_TEXTO);
@@ -143,6 +146,7 @@ public class ItemOrdenServicioDialog extends JDialog {
         panel.setOpaque(false);
 
         estilizarTabla(tablaItems);
+        configurarColumnas();
         tablaItems.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 actualizarBotonQuitar();
@@ -152,6 +156,62 @@ public class ItemOrdenServicioDialog extends JDialog {
         panel.add(armarFormularioNuevoItem(), BorderLayout.SOUTH);
 
         return panel;
+    }
+
+    /**
+     * Tipo angosto (abreviado), descripcion ancha y COMPLETA: si no entra en
+     * una linea, el renglon crece y el texto sigue en la linea de abajo.
+     */
+    private void configurarColumnas() {
+        TableColumnModel columnas = tablaItems.getColumnModel();
+        int[] anchos = {60, 420, 75, 120, 130};
+        for (int i = 0; i < anchos.length; i++) {
+            columnas.getColumn(i).setPreferredWidth(anchos[i]);
+        }
+        columnas.getColumn(0).setMaxWidth(80);
+        columnas.getColumn(2).setMaxWidth(100);
+        columnas.getColumn(1).setCellRenderer(new DescripcionCompletaRenderer());
+        // recalcular la altura de los renglones cuando cambian los items o el ancho de la tabla
+        modeloItems.addTableModelListener(e -> SwingUtilities.invokeLater(this::ajustarAlturaRenglones));
+        tablaItems.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                ajustarAlturaRenglones();
+            }
+        });
+    }
+
+    /** Cada renglon toma la altura que necesita la descripcion completa (minimo 26). */
+    private void ajustarAlturaRenglones() {
+        for (int fila = 0; fila < tablaItems.getRowCount(); fila++) {
+            Component celda = tablaItems.prepareRenderer(tablaItems.getCellRenderer(fila, 1), fila, 1);
+            int alto = Math.max(26, celda.getPreferredSize().height + 4);
+            if (tablaItems.getRowHeight(fila) != alto) {
+                tablaItems.setRowHeight(fila, alto);
+            }
+        }
+    }
+
+    /** Muestra la descripcion entera, cortando en varias lineas en vez de terminar con "...". */
+    private static class DescripcionCompletaRenderer extends JTextArea implements TableCellRenderer {
+        DescripcionCompletaRenderer() {
+            setLineWrap(true);
+            setWrapStyleWord(true);
+            setOpaque(true);
+            setBorder(BorderFactory.createEmptyBorder(4, 2, 2, 2));
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable tabla, Object valor, boolean seleccionado,
+                boolean conFoco, int fila, int columna) {
+            setText(valor == null ? "" : valor.toString());
+            setFont(tabla.getFont());
+            setForeground(seleccionado ? tabla.getSelectionForeground() : tabla.getForeground());
+            setBackground(seleccionado ? tabla.getSelectionBackground() : tabla.getBackground());
+            int ancho = tabla.getColumnModel().getColumn(columna).getWidth();
+            setSize(ancho, Short.MAX_VALUE); // para que el alto preferido tenga en cuenta el corte de lineas
+            return this;
+        }
     }
 
     private void estilizarTabla(JTable tabla) {
@@ -177,10 +237,13 @@ public class ItemOrdenServicioDialog extends JDialog {
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
         comboTipo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        Ayuda.tooltip(comboTipo, "SERVICIO = mano de obra del taller. REPUESTO = pieza o material.");
+        Ayuda.tooltip(comboTipo, "SERVICIO = mano de obra del taller. REPUESTO = pieza o material. VIAJE = se cobra al cliente, pero esa plata no entra en Financiero (va en su propia pestaña).");
         campoDescripcion.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         campoCantidad.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         campoValorUnitario.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        campoCantidad.setText("1"); // cantidad por defecto, se puede cambiar
+        Ayuda.tooltip(campoValorUnitario, "Puede quedar vacio (item sin valor). La OS no se puede cerrar "
+                + "hasta ponerle valor o quitarlo.");
         for (JTextField campo : new JTextField[]{campoDescripcion, campoCantidad, campoValorUnitario}) {
             campo.setPreferredSize(new Dimension(0, 30));
             campo.setBorder(BorderFactory.createCompoundBorder(
@@ -242,6 +305,9 @@ public class ItemOrdenServicioDialog extends JDialog {
 
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         botones.setOpaque(false);
+        botonEditar.addActionListener(e -> onEditarItem());
+        Ayuda.tooltip(botonEditar, "Editar el item seleccionado (solo con la OS abierta).");
+        botones.add(botonEditar);
         botonQuitar.addActionListener(e -> onQuitarItem());
         Ayuda.tooltip(botonQuitar, "Quitar de la OS el item seleccionado en la lista.");
         botonImprimir.addActionListener(e -> onImprimir());
@@ -280,7 +346,9 @@ public class ItemOrdenServicioDialog extends JDialog {
     }
 
     private void actualizarBotonQuitar() {
-        botonQuitar.setEnabled(esEditable() && tablaItems.getSelectedRow() >= 0);
+        boolean haySeleccion = esEditable() && tablaItems.getSelectedRow() >= 0;
+        botonQuitar.setEnabled(haySeleccion);
+        botonEditar.setEnabled(haySeleccion);
     }
 
     private String formatoMaquinario(Maquinario maquinario) {
@@ -404,18 +472,13 @@ public class ItemOrdenServicioDialog extends JDialog {
             return;
         }
 
-        // Acepta tanto "150000" como "150.000" (separador de miles paraguayo),
-        // igual que PagoClienteDialog.
-        BigDecimal valorUnitario;
-        try {
-            String texto = campoValorUnitario.getText().trim().replace(".", "").replace(",", ".");
-            valorUnitario = new BigDecimal(texto);
-            if (valorUnitario.compareTo(BigDecimal.ZERO) < 0) {
-                labelErrorItem.setText("El valor unitario no puede ser negativo.");
-                return;
-            }
-        } catch (NumberFormatException e) {
-            labelErrorItem.setText("Ingrese un valor unitario numerico valido.");
+        BigDecimal valorUnitario = leerValorUnitario(campoValorUnitario.getText());
+        if (valorUnitario == null) {
+            labelErrorItem.setText("Ingrese un valor unitario numerico valido (o dejelo vacio).");
+            return;
+        }
+        if (valorUnitario.compareTo(BigDecimal.ZERO) < 0) {
+            labelErrorItem.setText("El valor unitario no puede ser negativo.");
             return;
         }
 
@@ -442,8 +505,113 @@ public class ItemOrdenServicioDialog extends JDialog {
                     return;
                 }
                 campoDescripcion.setText("");
-                campoCantidad.setText("");
+                campoCantidad.setText("1");
                 campoValorUnitario.setText("");
+                refrescarTodo();
+            }
+        }.execute();
+    }
+
+    /**
+     * Lee el valor unitario aceptando "150000" o "150.000" (separador de miles
+     * paraguayo). Vacio = cero (item sin valor todavia). Null si es invalido.
+     */
+    private static BigDecimal leerValorUnitario(String textoIngresado) {
+        String texto = textoIngresado.trim().replace(".", "").replace(",", ".");
+        if (texto.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        try {
+            return new BigDecimal(texto);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** Abre el item seleccionado en un formulario para cambiar tipo, descripcion, cantidad y valor. */
+    private void onEditarItem() {
+        ItemOrdenServicio item = itemSeleccionado();
+        if (item == null || !esEditable()) {
+            return;
+        }
+        JComboBox<TipoItemOrdenServicio> tipoEdicion = new JComboBox<>(TipoItemOrdenServicio.values());
+        tipoEdicion.setSelectedItem(item.getTipo());
+        JTextField descripcionEdicion = new JTextField(item.getDescripcion(), 30);
+        // sin separador de miles: "1500" y no "1.500" (que al leer se tomaria como 1,5)
+        JTextField cantidadEdicion = new JTextField(item.getCantidad().stripTrailingZeros().toPlainString());
+        JTextField valorEdicion = new JTextField(item.getValorUnitario() == null
+                || item.getValorUnitario().signum() == 0 ? "" : FORMATO_VALOR.format(item.getValorUnitario()));
+        JLabel errorEdicion = new JLabel(" ");
+        errorEdicion.setForeground(Paleta.ROJO_ERROR);
+
+        JPanel formulario = new JPanel(new GridLayout(0, 1, 0, 4));
+        formulario.add(new JLabel("TIPO"));
+        formulario.add(tipoEdicion);
+        formulario.add(new JLabel("DESCRIPCION"));
+        formulario.add(descripcionEdicion);
+        formulario.add(new JLabel("CANTIDAD"));
+        formulario.add(cantidadEdicion);
+        formulario.add(new JLabel("VALOR UNIT. (Gs.) - vacio = sin valor"));
+        formulario.add(valorEdicion);
+        formulario.add(errorEdicion);
+
+        while (true) {
+            int opcion = JOptionPane.showConfirmDialog(this, formulario, "Editar item",
+                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+            if (opcion != JOptionPane.OK_OPTION) {
+                return;
+            }
+            String descripcion = descripcionEdicion.getText().trim();
+            if (descripcion.isEmpty()) {
+                errorEdicion.setText("La descripcion es obligatoria.");
+                continue;
+            }
+            BigDecimal cantidad;
+            try {
+                cantidad = new BigDecimal(cantidadEdicion.getText().trim().replace(",", "."));
+            } catch (NumberFormatException e) {
+                errorEdicion.setText("Ingrese una cantidad numerica valida.");
+                continue;
+            }
+            if (cantidad.compareTo(BigDecimal.ZERO) <= 0) {
+                errorEdicion.setText("La cantidad debe ser mayor que cero.");
+                continue;
+            }
+            BigDecimal valorUnitario = leerValorUnitario(valorEdicion.getText());
+            if (valorUnitario == null || valorUnitario.compareTo(BigDecimal.ZERO) < 0) {
+                errorEdicion.setText("Ingrese un valor unitario valido (o dejelo vacio).");
+                continue;
+            }
+            guardarEdicion(item, (TipoItemOrdenServicio) tipoEdicion.getSelectedItem(), descripcion, cantidad,
+                    valorUnitario);
+            return;
+        }
+    }
+
+    private void guardarEdicion(ItemOrdenServicio item, TipoItemOrdenServicio tipo, String descripcion,
+                                BigDecimal cantidad, BigDecimal valorUnitario) {
+        setHabilitado(false);
+        new SwingWorker<Void, Void>() {
+            RuntimeException error;
+
+            @Override
+            protected Void doInBackground() {
+                try {
+                    itemController.editar(item, tipo, descripcion, cantidad, valorUnitario);
+                } catch (RuntimeException e) {
+                    error = e;
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                setHabilitado(true);
+                if (error != null) {
+                    JOptionPane.showMessageDialog(ItemOrdenServicioDialog.this,
+                            error.getMessage(), "No fue posible editar el item", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
                 refrescarTodo();
             }
         }.execute();
@@ -513,6 +681,28 @@ public class ItemOrdenServicioDialog extends JDialog {
             return items.get(fila);
         }
 
+        /** Item guardado sin precio todavia (valor cero): la OS no se puede cerrar asi. */
+        private static boolean sinValor(ItemOrdenServicio item) {
+            return item.getValorUnitario() == null || item.getValorUnitario().signum() == 0;
+        }
+
+        /** Tipo corto para la columna angosta: Serv. / Rep. / Viaje. */
+        private static String tipoAbreviado(TipoItemOrdenServicio tipo) {
+            if (tipo == null) {
+                return "";
+            }
+            switch (tipo) {
+                case SERVICIO:
+                    return "Serv.";
+                case REPUESTO:
+                    return "Rep.";
+                case VIAJE:
+                    return "Viaje";
+                default:
+                    return tipo.name();
+            }
+        }
+
         @Override
         public int getRowCount() {
             return items.size();
@@ -533,15 +723,15 @@ public class ItemOrdenServicioDialog extends JDialog {
             ItemOrdenServicio item = items.get(fila);
             switch (columna) {
                 case 0:
-                    return item.getTipo();
+                    return tipoAbreviado(item.getTipo());
                 case 1:
                     return item.getDescripcion();
                 case 2:
                     return FORMATO_CANTIDAD.format(item.getCantidad());
                 case 3:
-                    return FORMATO_VALOR.format(item.getValorUnitario());
+                    return sinValor(item) ? "Sin valor" : FORMATO_VALOR.format(item.getValorUnitario());
                 case 4:
-                    return FORMATO_VALOR.format(item.getValorTotal());
+                    return sinValor(item) ? "Sin valor" : FORMATO_VALOR.format(item.getValorTotal());
                 default:
                     return "";
             }

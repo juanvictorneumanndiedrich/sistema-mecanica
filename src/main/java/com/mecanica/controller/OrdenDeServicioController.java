@@ -59,6 +59,8 @@ public class OrdenDeServicioController {
      * seguir agregando/quitando items). Las dos operaciones ocurren en la
      * misma transaccion, para nunca cerrar la OS sin actualizar el saldo (o
      * vice-versa).
+     *
+     * No deja cerrar si algun item quedo sin valor (valor unitario cero).
      */
     public OrdenDeServicio cerrar(OrdenDeServicio os) {
         if (os.getEstado() == EstadoOrdenServicio.CONCLUIDA || os.getEstado() == EstadoOrdenServicio.CANCELADA) {
@@ -67,6 +69,15 @@ public class OrdenDeServicioController {
 
         OrdenDeServicio osGerenciada = BD.transaccion(conexion -> {
             OrdenDeServicio gerenciada = ordemDeServicoDAO.buscarPorId(conexion, os.getId());
+            // no se cierra una OS con items todavia sin valor (guardados con valor cero)
+            Long sinValor = BD.valor(conexion, Long.class,
+                    "SELECT COUNT(*) FROM item_orden_servicio WHERE orden_de_servicio_id = ? AND valor_unitario = 0",
+                    gerenciada.getId());
+            if (sinValor != null && sinValor > 0) {
+                throw new IllegalStateException("No se puede cerrar la OS: tiene " + sinValor
+                        + (sinValor == 1 ? " item sin valor" : " items sin valor")
+                        + ". Edite el item para ponerle valor o quitelo.");
+            }
             gerenciada.setEstado(EstadoOrdenServicio.CONCLUIDA);
             gerenciada.setFechaCierre(LocalDate.now());
             ordemDeServicoDAO.guardar(conexion, gerenciada);

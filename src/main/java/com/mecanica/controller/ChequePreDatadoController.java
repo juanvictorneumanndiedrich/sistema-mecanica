@@ -35,6 +35,7 @@ public class ChequePreDatadoController {
     private final ClienteDAO clienteDAO = new ClienteDAO();
     private final ProveedorDAO proveedorDAO = new ProveedorDAO();
     private final MovimientoFinancieroDAO movimientoDAO = new MovimientoFinancieroDAO();
+    private final ViajeController viajeController = new ViajeController();
     private final AuditoriaController auditoria = new AuditoriaController();
 
     /**
@@ -70,7 +71,8 @@ public class ChequePreDatadoController {
                 throw new IllegalArgumentException(
                         "El descuento no puede ser mayor que la deuda del cliente (Gs. " + deuda + ").");
             }
-            gerenciado.setSaldo(saldoAntes.subtract(valorCheque).subtract(descuento));
+            BigDecimal saldoDespues = saldoAntes.subtract(valorCheque).subtract(descuento);
+            gerenciado.setSaldo(saldoDespues);
             clienteDAO.guardar(conexion, gerenciado);
 
             ChequePreDatado cheque = new ChequePreDatado();
@@ -87,6 +89,10 @@ public class ChequePreDatadoController {
             cheque.setDescripcion(descripcion);
             cheque.setEstado(EstadoCheque.PENDIENTE);
             chequeDAO.guardar(conexion, cheque);
+            // si el cheque cubre viajes de alguna OS, esa parte queda anotada (sin confirmar)
+            // y NO va a entrar en Financiero cuando el cheque se confirme
+            viajeController.repartirPago(conexion, gerenciado, saldoAntes, saldoDespues, valorCheque,
+                    cheque.getId());
             return gerenciado;
         });
         auditoria.registrar("CHEQUE PRE-DATADO DE CLIENTE", clienteGerenciado.getNombre() + " - "
@@ -153,6 +159,10 @@ public class ChequePreDatadoController {
      * Cliente, SALIDA/COMPRA_PROVEEDOR si era para un Proveedor). El saldo
      * del Cliente/Proveedor NO se toca de nuevo aca -- ya fue descontado
      * cuando el cheque se registro.
+     *
+     * Si un cheque de Cliente cubria viajes (ver ViajeController), esa parte
+     * pasa a "cobrada" en la pestaña Viajes y el MovimientoFinanciero se
+     * genera solo por el resto del cheque.
      */
     public void confirmar(ChequePreDatado cheque) {
         if (cheque == null) {
@@ -160,10 +170,11 @@ public class ChequePreDatadoController {
         }
 
         String[] descripcionAuditoria = new String[1];
-        MovimientoFinanciero movimiento = BD.transaccion(conexion -> {
+        BigDecimal[] valorAuditoria = new BigDecimal[1];
+        Boolean confirmado = BD.transaccion(conexion -> {
             ChequePreDatado chequeGerenciado = chequeDAO.buscarPorId(conexion, cheque.getId());
             if (chequeGerenciado == null) {
-                return null;
+                return false;
             }
             if (chequeGerenciado.getEstado() == EstadoCheque.CONFIRMADO) {
                 throw new IllegalStateException("Ese cheque ya fue confirmado.");
@@ -186,7 +197,14 @@ public class ChequePreDatadoController {
                 nuevo.setProveedor(chequeGerenciado.getProveedor());
                 origen = chequeGerenciado.getProveedor().getNombre();
             }
-            nuevo.setValor(chequeGerenciado.getValor());
+            BigDecimal valorFinanciero = chequeGerenciado.getValor();
+            if (chequeGerenciado.getCliente() != null) {
+                BigDecimal viaje = viajeController.viajeDeCheque(conexion, chequeGerenciado.getId());
+                viajeController.confirmarDeCheque(conexion, chequeGerenciado.getId());
+                valorFinanciero = valorFinanciero.subtract(viaje);
+            }
+            valorAuditoria[0] = chequeGerenciado.getValor();
+            nuevo.setValor(valorFinanciero);
             nuevo.setDescuentoValor(chequeGerenciado.getDescuentoValor());
             nuevo.setDescuentoPorcentaje(chequeGerenciado.getDescuentoPorcentaje());
             String numero = chequeGerenciado.getNumeroCheque();
@@ -198,12 +216,15 @@ public class ChequePreDatadoController {
             nuevo.setDescripcion(descripcionExtra == null || descripcionExtra.isBlank()
                     ? descripcionBase
                     : descripcionBase + " - " + descripcionExtra);
-            movimientoDAO.guardar(conexion, nuevo);
-            return nuevo;
+            // si el cheque era todo de viaje, no queda nada para Financiero
+            if (valorFinanciero.signum() > 0) {
+                movimientoDAO.guardar(conexion, nuevo);
+            }
+            return true;
         });
-        if (movimiento != null) {
+        if (confirmado) {
             auditoria.registrar("CHEQUE CONFIRMADO", descripcionAuditoria[0] + " - "
-                    + AuditoriaController.gs(movimiento.getValor()));
+                    + AuditoriaController.gs(valorAuditoria[0]));
         }
     }
 

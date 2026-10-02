@@ -16,7 +16,11 @@ import java.time.format.DateTimeParseException;
  * descuenta directamente el SALDO GENERAL del proveedor y ya genera el
  * MovimientoFinanciero (ver ProveedorController.registrarPagamento).
  *
- * Si se marca "CHEQUE PRE-DATADO", el saldo tambien se descuenta en el
+ * La FORMA DE PAGO se elige de una lista fija (Efectivo, Transferencia,
+ * Cheque a la vista, Cheque pre-datado) en vez de tipear una descripcion:
+ * lo elegido queda como descripcion del movimiento en Financiero.
+ *
+ * Si se elige "Cheque pre-datado", el saldo tambien se descuenta en el
  * acto, pero el MovimientoFinanciero (el gasto real en Financiero) queda
  * pendiente hasta que el cheque venza y sea confirmado en la pestaña
  * "Cheques Pendientes" de la pantalla Financiero -- ver
@@ -36,8 +40,13 @@ public class PagoProveedorDialog extends JDialog {
 
     private final JLabel labelResumen = new JLabel(" ");
     private final JTextField campoValor = new JTextField();
-    private final JTextField campoDescripcion = new JTextField();
-    private final JCheckBox checkChequePreDatado = new JCheckBox("ES UN CHEQUE PRE-DATADO");
+    private static final String EFECTIVO = "Efectivo";
+    private static final String TRANSFERENCIA = "Transferencia";
+    private static final String CHEQUE_A_LA_VISTA = "Cheque a la vista";
+    private static final String CHEQUE_PRE_DATADO = "Cheque pre-datado";
+
+    private final JComboBox<String> comboFormaPago = new JComboBox<>(
+            new String[] {EFECTIVO, TRANSFERENCIA, CHEQUE_A_LA_VISTA, CHEQUE_PRE_DATADO});
     private final JTextField campoNumeroCheque = new JTextField();
     private final JTextField campoBanco = new JTextField();
     private final JTextField campoVencimiento = new JTextField();
@@ -162,28 +171,23 @@ public class PagoProveedorDialog extends JDialog {
         gbc.insets = new Insets(4, 0, 0, 0);
         formulario.add(campoValor, gbc);
 
-        JLabel labelDescripcion = new JLabel("DESCRIPCION");
+        JLabel labelDescripcion = new JLabel("FORMA DE PAGO *");
         labelDescripcion.setForeground(Paleta.GRIS_TEXTO);
         labelDescripcion.setFont(new Font("Segoe UI", Font.BOLD, 11));
         gbc.gridy = 7;
         gbc.insets = new Insets(14, 0, 0, 0);
         formulario.add(labelDescripcion, gbc);
 
-        estilizarCampo(campoDescripcion);
+        comboFormaPago.setSelectedIndex(-1); // ninguna elegida: el usuario tiene que elegir
+        comboFormaPago.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        comboFormaPago.setPreferredSize(new Dimension(0, 34));
+        comboFormaPago.addActionListener(e -> alternarPanelCheque());
+        Ayuda.tooltip(comboFormaPago, "Como se paga. Cheque pre-datado = cheque para una fecha futura: el "
+                + "saldo baja ahora y el dinero sale como gasto en Financiero cuando se confirma el cheque "
+                + "(Financiero > Cheques Pendientes).");
         gbc.gridy = 8;
         gbc.insets = new Insets(4, 0, 0, 0);
-        formulario.add(campoDescripcion, gbc);
-
-        checkChequePreDatado.setOpaque(false);
-        checkChequePreDatado.setFont(new Font("Segoe UI", Font.BOLD, 11));
-        checkChequePreDatado.setForeground(Paleta.GRIS_TEXTO);
-        checkChequePreDatado.addActionListener(e -> alternarPanelCheque());
-        Ayuda.tooltip(checkChequePreDatado, "Marque si el pago es con un cheque para una fecha futura. El saldo "
-                + "baja ahora; el dinero sale como gasto en Financiero cuando se confirma el cheque "
-                + "(Financiero > Cheques Pendientes).");
-        gbc.gridy = 9;
-        gbc.insets = new Insets(16, 0, 0, 0);
-        formulario.add(checkChequePreDatado, gbc);
+        formulario.add(comboFormaPago, gbc);
 
         armarPanelCheque();
         panelCheque.setVisible(false);
@@ -261,8 +265,12 @@ public class PagoProveedorDialog extends JDialog {
         panelCheque.add(campoVencimiento, gbc);
     }
 
+    private boolean esChequePreDatado() {
+        return CHEQUE_PRE_DATADO.equals(comboFormaPago.getSelectedItem());
+    }
+
     private void alternarPanelCheque() {
-        panelCheque.setVisible(checkChequePreDatado.isSelected());
+        panelCheque.setVisible(esChequePreDatado());
         revalidate();
         repaint();
     }
@@ -393,6 +401,11 @@ public class PagoProveedorDialog extends JDialog {
     private void onRegistrar() {
         labelError.setText(" ");
 
+        if (comboFormaPago.getSelectedItem() == null) {
+            labelError.setText("Seleccione la forma de pago.");
+            return;
+        }
+
         BigDecimal valorIngresado = parsearONull(campoValor);
         if (valorIngresado == null) {
             labelError.setText("Ingrese un valor numerico valido.");
@@ -425,7 +438,7 @@ public class PagoProveedorDialog extends JDialog {
             descuentoValor = BigDecimal.ZERO;
         }
 
-        if (checkChequePreDatado.isSelected()) {
+        if (esChequePreDatado()) {
             String textoVencimiento = campoVencimiento.getText().trim();
             LocalDate vencimiento;
             try {
@@ -446,7 +459,9 @@ public class PagoProveedorDialog extends JDialog {
             chequePreDatado = false;
         }
 
-        descripcion = campoDescripcion.getText().trim();
+        // la forma de pago queda como descripcion; en el cheque pre-datado no hace falta,
+        // porque al confirmarlo el movimiento ya dice "Cheque pre-datado Nº ..."
+        descripcion = esChequePreDatado() ? "" : (String) comboFormaPago.getSelectedItem();
         confirmado = true;
         dispose();
     }

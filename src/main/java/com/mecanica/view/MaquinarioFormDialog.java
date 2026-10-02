@@ -3,7 +3,6 @@ package com.mecanica.view;
 import com.mecanica.enums.TipoMaquinario;
 import com.mecanica.model.Cliente;
 import com.mecanica.model.Maquinario;
-import com.mecanica.util.Validaciones;
 
 import javax.swing.*;
 import java.awt.*;
@@ -147,10 +146,6 @@ public class MaquinarioFormDialog extends JDialog {
         }
 
         String identificacion = campoIdentificacion.getText().trim();
-        if (!identificacion.isEmpty() && !Validaciones.alfanumericoConEspacioGuion(identificacion)) {
-            labelError.setText("La identificacion solo puede contener letras, numeros, espacios y guiones.");
-            return;
-        }
 
         if (maquinario == null) {
             maquinario = new Maquinario();

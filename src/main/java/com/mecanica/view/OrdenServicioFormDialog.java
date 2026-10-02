@@ -8,7 +8,12 @@ import com.mecanica.model.Maquinario;
 import com.mecanica.model.OrdenDeServicio;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.plaf.basic.BasicComboBoxEditor;
 import java.awt.*;
+import java.text.Normalizer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
 
@@ -38,6 +43,14 @@ public class OrdenServicioFormDialog extends JDialog {
 
     private OrdenDeServicio ordenCreada;
     private boolean confirmado;
+
+    /** Todos los clientes cargados; el combo muestra solo los que coinciden con lo escrito. */
+    private List<Cliente> todosClientes = List.of();
+    /** Cliente realmente elegido por el usuario (null mientras no elija ninguno). */
+    private Cliente clienteElegido;
+    /** true mientras el propio codigo cambia el combo/texto (evita reacciones en cadena). */
+    private boolean ajustando;
+    private JTextField campoBusqueda;
 
     public OrdenServicioFormDialog(Window propietario) {
         super(propietario, "Nueva Orden de Servicio", ModalityType.APPLICATION_MODAL);
@@ -70,7 +83,19 @@ public class OrdenServicioFormDialog extends JDialog {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.WEST;
 
-        int fila = agregarEtiqueta(formulario, gbc, 0, "CLIENTE *");
+        int fila = agregarEtiqueta(formulario, gbc, 0, "CLIENTE * (escriba para buscar)");
+        // Combo editable: al escribir, la lista se filtra a los clientes cuyo
+        // nombre EMPIEZA con lo escrito. Arranca sin ningun cliente elegido.
+        comboCliente.setEditor(new BasicComboBoxEditor() {
+            @Override
+            public void setItem(Object item) {
+                if (ajustando) {
+                    return;
+                }
+                super.setItem(item instanceof Cliente c ? c.getNombre() : item);
+            }
+        });
+        comboCliente.setEditable(true);
         comboCliente.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         comboCliente.setRenderer(new DefaultListCellRenderer() {
             @Override
@@ -83,7 +108,13 @@ public class OrdenServicioFormDialog extends JDialog {
                 return this;
             }
         });
-        comboCliente.addActionListener(e -> cargarMaquinarios(clienteSeleccionado()));
+        campoBusqueda = (JTextField) comboCliente.getEditor().getEditorComponent();
+        campoBusqueda.getDocument().addDocumentListener(new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e) { textoCambio(); }
+            @Override public void removeUpdate(DocumentEvent e) { textoCambio(); }
+            @Override public void changedUpdate(DocumentEvent e) { textoCambio(); }
+        });
+        comboCliente.addActionListener(e -> alElegirEnCombo());
         gbc.gridy = fila++;
         gbc.insets = new Insets(4, 0, 0, 0);
         formulario.add(comboCliente, gbc);
@@ -103,6 +134,7 @@ public class OrdenServicioFormDialog extends JDialog {
                 return this;
             }
         });
+        comboMaquinario.setModel(new DefaultComboBoxModel<>(new Vector<>(java.util.Collections.singletonList((Maquinario) null))));
         gbc.gridy = fila++;
         gbc.insets = new Insets(4, 0, 0, 0);
         formulario.add(comboMaquinario, gbc);
@@ -170,7 +202,94 @@ public class OrdenServicioFormDialog extends JDialog {
     }
 
     private Cliente clienteSeleccionado() {
-        return (Cliente) comboCliente.getSelectedItem();
+        return clienteElegido;
+    }
+
+    // ---------------------------------------------------------------- Busqueda de cliente
+
+    private static String normalizar(String texto) {
+        String sinAcentos = Normalizer.normalize(texto == null ? "" : texto, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        return sinAcentos.trim().toLowerCase();
+    }
+
+    /** Clientes cuyo nombre empieza con el texto (sin distinguir mayusculas ni acentos). */
+    private List<Cliente> filtrarClientes(String texto) {
+        String buscado = normalizar(texto);
+        List<Cliente> resultado = new ArrayList<>();
+        for (Cliente c : todosClientes) {
+            if (normalizar(c.getNombre()).startsWith(buscado)) {
+                resultado.add(c);
+            }
+        }
+        return resultado;
+    }
+
+    private void textoCambio() {
+        if (ajustando) {
+            return;
+        }
+        SwingUtilities.invokeLater(this::actualizarListaClientes);
+    }
+
+    private void actualizarListaClientes() {
+        String texto = campoBusqueda.getText();
+        if (clienteElegido != null && texto.equals(clienteElegido.getNombre())) {
+            return; // el texto es el del cliente recien elegido, no una edicion
+        }
+        if (clienteElegido != null) {
+            // edito el texto: ya no hay cliente elegido y los maquinarios se reinician
+            clienteElegido = null;
+            comboMaquinario.setModel(new DefaultComboBoxModel<>(
+                    new Vector<>(java.util.Collections.singletonList((Maquinario) null))));
+            labelError.setText(" ");
+        }
+        ajustando = true;
+        try {
+            comboCliente.setModel(new DefaultComboBoxModel<>(new Vector<>(filtrarClientes(texto))));
+            comboCliente.setSelectedItem(null);
+        } finally {
+            ajustando = false;
+        }
+        if (comboCliente.getItemCount() > 0 && campoBusqueda.isShowing()) {
+            comboCliente.setPopupVisible(true);
+        } else {
+            comboCliente.setPopupVisible(false);
+        }
+    }
+
+    private void alElegirEnCombo() {
+        if (ajustando) {
+            return;
+        }
+        Object seleccion = comboCliente.getSelectedItem();
+        Cliente elegido = null;
+        if (seleccion instanceof Cliente c) {
+            elegido = c;
+        } else if (seleccion instanceof String texto) {
+            // Enter con texto escrito: vale si coincide exacto o queda un solo cliente
+            List<Cliente> coincidencias = filtrarClientes(texto);
+            for (Cliente c : coincidencias) {
+                if (normalizar(c.getNombre()).equals(normalizar(texto))) {
+                    elegido = c;
+                }
+            }
+            if (elegido == null && coincidencias.size() == 1) {
+                elegido = coincidencias.get(0);
+            }
+        }
+        if (elegido == null || elegido == clienteElegido) {
+            return;
+        }
+        ajustando = true;
+        try {
+            clienteElegido = elegido;
+            campoBusqueda.setText(elegido.getNombre());
+        } finally {
+            ajustando = false;
+        }
+        comboCliente.setPopupVisible(false);
+        cargarMaquinarios(elegido);
     }
 
     private Maquinario maquinarioSeleccionado() {
@@ -203,14 +322,20 @@ public class OrdenServicioFormDialog extends JDialog {
                 } catch (Exception e) {
                     error = e;
                 }
-                comboCliente.setModel(new DefaultComboBoxModel<>(new Vector<>(clientes)));
+                todosClientes = clientes;
+                ajustando = true;
+                try {
+                    comboCliente.setModel(new DefaultComboBoxModel<>(new Vector<>(clientes)));
+                    comboCliente.setSelectedItem(null); // ningun cliente preseleccionado
+                    campoBusqueda.setText("");
+                } finally {
+                    ajustando = false;
+                }
                 if (error != null) {
                     labelError.setText("No fue posible cargar los clientes.");
                 } else if (clientes.isEmpty()) {
                     labelError.setText("No hay clientes registrados. Registre un cliente primero.");
                     botonGuardar.setEnabled(false);
-                } else {
-                    cargarMaquinarios(clienteSeleccionado());
                 }
             }
         }.execute();
@@ -238,6 +363,9 @@ public class OrdenServicioFormDialog extends JDialog {
             @Override
             protected void done() {
                 setHabilitado(true);
+                if (cliente != clienteElegido) {
+                    return; // el usuario ya cambio de cliente mientras cargaba
+                }
                 List<Maquinario> maquinarios = List.of();
                 try {
                     maquinarios = get();
@@ -278,7 +406,7 @@ public class OrdenServicioFormDialog extends JDialog {
         String problema = campoProblema.getText().trim();
 
         if (cliente == null) {
-            labelError.setText("Seleccione un cliente.");
+            labelError.setText("Seleccione un cliente de la lista.");
             return;
         }
         if (problema.isEmpty()) {

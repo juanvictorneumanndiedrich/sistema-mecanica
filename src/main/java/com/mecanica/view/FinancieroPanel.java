@@ -4,12 +4,14 @@ import com.mecanica.controller.ChequePreDatadoController;
 import com.mecanica.controller.CierreMensualController;
 import com.mecanica.controller.MovimientoFinancieroController;
 import com.mecanica.controller.ReporteController;
+import com.mecanica.controller.ViajeController;
 import com.mecanica.enums.Permiso;
 import com.mecanica.enums.TipoMovimientoFinanciero;
 import com.mecanica.model.ChequePreDatado;
 import com.mecanica.model.CierreMensual;
 import com.mecanica.model.CierreSocioDetalle;
 import com.mecanica.model.MovimientoFinanciero;
+import com.mecanica.model.ViajeCobrado;
 import com.mecanica.util.Sesion;
 
 import javax.swing.*;
@@ -55,6 +57,8 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DecimalFormat FORMATO_SALDO = com.mecanica.util.Moneda.nuevoFormatoValor();
     private static final String TODOS_LOS_TIPOS = "(todos)";
+    private static final String ESTADO_PAGADO = "Pagado";
+    private static final String ESTADO_NO_PAGADO = "No pagado";
     private static final String TIPO_INGRESO = "Ingreso";
     private static final String TIPO_EGRESO = "Egreso";
 
@@ -62,6 +66,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
     private final ChequePreDatadoController chequeController = new ChequePreDatadoController();
     private final CierreMensualController cierreMensualController = new CierreMensualController();
     private final ReporteController reporteController = new ReporteController();
+    private final ViajeController viajeController = new ViajeController();
 
     private final TablaMovimientosModel modeloMovimientos = new TablaMovimientosModel();
     private final JTable tablaMovimientos = new JTable(modeloMovimientos);
@@ -76,6 +81,12 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
     private final JTable tablaCheques = new JTable(modeloCheques);
     private final BotonPlano botonConfirmarCheque = new BotonPlano("CONFIRMAR CHEQUE (VENCIDO)");
     private final JLabel labelErrorCheques = new JLabel(" ");
+
+    private final TablaViajesModel modeloViajes = new TablaViajesModel();
+    private final JTable tablaViajes = new JTable(modeloViajes);
+    private final JLabel labelTotalViajes = new JLabel(" ");
+    private final BotonPlano botonEditarViaje = new BotonPlano("EDITAR ESTADO");
+    private final JLabel labelErrorViajes = new JLabel(" ");
 
     private final TablaPendientesCierreModel modeloPendientesCierre = new TablaPendientesCierreModel();
     private final JTable tablaPendientesCierre = new JTable(modeloPendientesCierre);
@@ -111,6 +122,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         pestañas.setFont(new Font("Segoe UI", Font.BOLD, 13));
         pestañas.addTab("Movimientos", armarPestañaMovimientos());
         pestañas.addTab("Cheques Pendientes", armarPestañaCheques());
+        pestañas.addTab("Viajes", armarPestañaViajes());
         if (Sesion.tiene(Permiso.CIERRE_MENSUAL)) {
             pestañas.addTab("Cierre Mensual", armarPestañaCierreMensual());
         }
@@ -128,6 +140,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
 
         buscarMovimientos();
         cargarChequesPendientes();
+        cargarViajes();
         cargarPendientesCierre();
         cargarHistoricoCierres();
     }
@@ -137,6 +150,7 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
     public void actualizar() {
         buscarMovimientos();
         cargarChequesPendientes();
+        cargarViajes();
         cargarPendientesCierre();
         cargarHistoricoCierres();
     }
@@ -291,6 +305,162 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
         panel.add(pie, BorderLayout.SOUTH);
 
         return panel;
+    }
+
+    // ---------------------------------------------------------------- Pestaña Viajes
+
+    /**
+     * Los viajes de las OS que los clientes ya pagaron enteras. Esta plata NO
+     * esta en "Movimientos" ni entra en el Cierre Mensual: se cobra junto con
+     * la OS, pero va aparte (ver ViajeController). El viaje es "todo o nada"
+     * por OS: mientras la OS no este paga entera, su viaje no aparece aca
+     * (solo se avisa cuanto hay retenido). Solo lectura.
+     */
+    private JComponent armarPestañaViajes() {
+        JPanel panel = new JPanel(new BorderLayout(0, 8));
+        panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
+
+        estilizarTabla(tablaViajes);
+        panel.add(new JScrollPane(tablaViajes), BorderLayout.CENTER);
+
+        tablaViajes.getColumnModel().getColumn(5).setCellRenderer(new ColorEstadoViajeRenderer(modeloViajes));
+
+        labelTotalViajes.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        labelTotalViajes.setForeground(Paleta.AZUL_OSCURO);
+        labelErrorViajes.setForeground(Paleta.ROJO_ERROR);
+        labelErrorViajes.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        JPanel textos = new JPanel(new GridLayout(2, 1));
+        textos.setOpaque(false);
+        textos.add(labelTotalViajes);
+        textos.add(labelErrorViajes);
+
+        botonEditarViaje.addActionListener(e -> onEditarEstadoViaje());
+        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        acciones.setOpaque(false);
+        acciones.add(botonEditarViaje);
+
+        JPanel pie = new JPanel(new BorderLayout());
+        pie.setOpaque(false);
+        pie.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
+        pie.add(textos, BorderLayout.CENTER);
+        pie.add(acciones, BorderLayout.EAST);
+        panel.add(pie, BorderLayout.SOUTH);
+        Ayuda.tooltip(tablaViajes, "Viajes que el cliente ya pago. Esta plata no entra en Financiero.");
+        Ayuda.tooltip(botonEditarViaje, "Cambia el estado del viaje seleccionado: Pagado / No pagado.");
+        return panel;
+    }
+
+    /** Edita SOLO el estado (Pagado / No pagado) del viaje seleccionado. */
+    private void onEditarEstadoViaje() {
+        labelErrorViajes.setText(" ");
+        int fila = tablaViajes.getSelectedRow();
+        if (fila < 0) {
+            labelErrorViajes.setText("Seleccione un viaje en la lista.");
+            return;
+        }
+        ViajeController.ViajeDeOrden seleccionado = modeloViajes.getViaje(tablaViajes.convertRowIndexToModel(fila));
+
+        JComboBox<String> comboEstado = new JComboBox<>(new String[] {ESTADO_NO_PAGADO, ESTADO_PAGADO});
+        comboEstado.setSelectedItem(seleccionado.isPagado() ? ESTADO_PAGADO : ESTADO_NO_PAGADO);
+        JPanel formulario = new JPanel(new GridLayout(0, 1, 0, 6));
+        formulario.add(new JLabel("OS N° " + String.format("%06d", seleccionado.getNumeroOs()) + " - "
+                + seleccionado.getCliente().getNombre()));
+        formulario.add(new JLabel("Viaje: Gs. " + FORMATO_SALDO.format(seleccionado.getValor())));
+        formulario.add(new JLabel("Estado:"));
+        formulario.add(comboEstado);
+        int opcion = JOptionPane.showConfirmDialog(this, formulario, "Editar estado del viaje",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (opcion != JOptionPane.OK_OPTION) {
+            return;
+        }
+        boolean pagado = ESTADO_PAGADO.equals(comboEstado.getSelectedItem());
+        if (pagado == seleccionado.isPagado()) {
+            return; // no cambio nada
+        }
+
+        setHabilitado(false);
+        new SwingWorker<Void, Void>() {
+            RuntimeException error;
+
+            @Override
+            protected Void doInBackground() {
+                try {
+                    viajeController.cambiarEstado(seleccionado, pagado);
+                } catch (RuntimeException e) {
+                    error = e;
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                setHabilitado(true);
+                if (error != null) {
+                    JOptionPane.showMessageDialog(FinancieroPanel.this, error.getMessage(),
+                            "No fue posible cambiar el estado", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                cargarViajes();
+            }
+        }.execute();
+    }
+
+    private void cargarViajes() {
+        new SwingWorker<List<ViajeCobrado>, Void>() {
+            Exception error;
+
+            @Override
+            protected List<ViajeCobrado> doInBackground() {
+                try {
+                    return viajeController.listarTodos();
+                } catch (Exception e) {
+                    error = e;
+                    return List.of();
+                }
+            }
+
+            @Override
+            protected void done() {
+                List<ViajeCobrado> resultado;
+                try {
+                    resultado = get();
+                } catch (Exception e) {
+                    error = e;
+                    resultado = List.of();
+                }
+                if (error != null) {
+                    mostrarErrorConexion();
+                    return;
+                }
+                List<ViajeCobrado> visibles = new ArrayList<>();
+                BigDecimal cobrado = BigDecimal.ZERO;
+                BigDecimal enCheques = BigDecimal.ZERO;
+                BigDecimal retenido = BigDecimal.ZERO;
+                for (ViajeCobrado viaje : resultado) {
+                    if (!viaje.isOsQuitada()) {
+                        retenido = retenido.add(viaje.getValor());
+                        continue;
+                    }
+                    visibles.add(viaje);
+                    if (viaje.isConfirmado()) {
+                        cobrado = cobrado.add(viaje.getValor());
+                    } else {
+                        enCheques = enCheques.add(viaje.getValor());
+                    }
+                }
+                modeloViajes.setDatos(ViajeController.agruparPorOrden(visibles));
+                String texto = "Total de viajes cobrados: Gs. " + FORMATO_SALDO.format(cobrado);
+                if (enCheques.signum() > 0) {
+                    texto += "   (en cheques pendientes: Gs. " + FORMATO_SALDO.format(enCheques) + ")";
+                }
+                if (retenido.signum() > 0) {
+                    texto += "   (retenido hasta que se pague la nota entera: Gs. "
+                            + FORMATO_SALDO.format(retenido) + ")";
+                }
+                labelTotalViajes.setText(texto);
+            }
+        }.execute();
     }
 
     // ---------------------------------------------------------------- Pestaña Cierre Mensual
@@ -1030,6 +1200,83 @@ public class FinancieroPanel extends JPanel implements PanelActualizable {
                     return cheque.getFechaVencimiento() == null ? "" : cheque.getFechaVencimiento().format(FORMATO_FECHA_TABLA);
                 case 5:
                     return FORMATO_VALOR.format(cheque.getValor() == null ? BigDecimal.ZERO : cheque.getValor());
+                default:
+                    return "";
+            }
+        }
+    }
+
+    /** Pinta la columna "Estado" de Viajes: verde si ya esta pagado. */
+    private static class ColorEstadoViajeRenderer extends DefaultTableCellRenderer {
+        private final TablaViajesModel modelo;
+
+        ColorEstadoViajeRenderer(TablaViajesModel modelo) {
+            this.modelo = modelo;
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable tabla, Object valor, boolean seleccionado,
+                boolean conFoco, int fila, int columna) {
+            Component componente = super.getTableCellRendererComponent(tabla, valor, seleccionado, conFoco, fila, columna);
+            boolean pagado = modelo.getViaje(tabla.convertRowIndexToModel(fila)).isPagado();
+            componente.setForeground(pagado ? Paleta.VERDE_EXITO : Paleta.GRIS_TEXTO);
+            return componente;
+        }
+    }
+
+    /**
+     * Tabla de la pestaña "Viajes": una fila por OS ya paga entera, con fecha,
+     * cliente, numero de OS, valor, si el dinero ya se cobro (Cobro) y el
+     * estado Pagado / No pagado (Estado, lo unico editable, con el boton
+     * EDITAR ESTADO).
+     */
+    private static class TablaViajesModel extends AbstractTableModel {
+        private static final String[] COLUMNAS = {"Fecha", "Cliente", "OS N°", "Valor (Gs.)", "Cobro", "Estado"};
+        private static final DecimalFormat FORMATO_VALOR = com.mecanica.util.Moneda.nuevoFormatoValor();
+        private static final DateTimeFormatter FORMATO_FECHA_TABLA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+        private List<ViajeController.ViajeDeOrden> viajes = List.of();
+
+        void setDatos(List<ViajeController.ViajeDeOrden> viajes) {
+            this.viajes = viajes;
+            fireTableDataChanged();
+        }
+
+        ViajeController.ViajeDeOrden getViaje(int fila) {
+            return viajes.get(fila);
+        }
+
+        @Override
+        public int getRowCount() {
+            return viajes.size();
+        }
+
+        @Override
+        public int getColumnCount() {
+            return COLUMNAS.length;
+        }
+
+        @Override
+        public String getColumnName(int columna) {
+            return COLUMNAS[columna];
+        }
+
+        @Override
+        public Object getValueAt(int fila, int columna) {
+            ViajeController.ViajeDeOrden viaje = viajes.get(fila);
+            switch (columna) {
+                case 0:
+                    return viaje.getFecha() == null ? "" : viaje.getFecha().format(FORMATO_FECHA_TABLA);
+                case 1:
+                    return viaje.getCliente() == null ? "" : viaje.getCliente().getNombre();
+                case 2:
+                    return viaje.getNumeroOs() == null ? "" : String.format("%06d", viaje.getNumeroOs());
+                case 3:
+                    return FORMATO_VALOR.format(viaje.getValor());
+                case 4:
+                    return viaje.isConfirmado() ? "Cobrado" : "Cheque pendiente";
+                case 5:
+                    return viaje.isPagado() ? ESTADO_PAGADO : ESTADO_NO_PAGADO;
                 default:
                     return "";
             }

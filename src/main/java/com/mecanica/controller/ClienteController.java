@@ -26,6 +26,7 @@ public class ClienteController {
 
     private final ClienteDAO clienteDAO = new ClienteDAO();
     private final MovimientoFinancieroDAO movimientoDAO = new MovimientoFinancieroDAO();
+    private final ViajeController viajeController = new ViajeController();
     private final AuditoriaController auditoria = new AuditoriaController();
 
     public Cliente guardar(Cliente cliente) {
@@ -78,6 +79,11 @@ public class ClienteController {
      * antes del pago se calcula y se guarda junto, solo para mostrarlo en la
      * tabla de Movimientos.
      *
+     * Si el pago alcanza la parte de VIAJE de alguna OS del cliente (ver
+     * ViajeController), esa parte NO entra en Financiero -- queda anotada en
+     * la pestaña Viajes, y solo el resto del pago genera el
+     * MovimientoFinanciero.
+     *
      * @param descuentoValor monto perdonado en Gs. (BigDecimal.ZERO o null = sin descuento)
      */
     public void registrarPagamento(Cliente cliente, BigDecimal valorPagado, BigDecimal descuentoValor,
@@ -98,14 +104,23 @@ public class ClienteController {
                 throw new IllegalArgumentException(
                         "El descuento no puede ser mayor que la deuda del cliente (Gs. " + deuda + ").");
             }
-            gerenciado.setSaldo(saldoAntes.subtract(valorPagado).subtract(descuento));
+            BigDecimal saldoDespues = saldoAntes.subtract(valorPagado).subtract(descuento);
+            gerenciado.setSaldo(saldoDespues);
             clienteDAO.guardar(conexion, gerenciado);
+
+            // la parte del pago que cubre viajes va a la pestaña Viajes, no a Financiero
+            BigDecimal viaje = viajeController.repartirPago(conexion, gerenciado, saldoAntes, saldoDespues,
+                    valorPagado, null);
+            BigDecimal valorFinanciero = valorPagado.subtract(viaje);
+            if (valorFinanciero.signum() <= 0) {
+                return gerenciado; // el pago fue todo de viaje: nada que anotar en Financiero
+            }
 
             MovimientoFinanciero movimiento = new MovimientoFinanciero();
             movimiento.setFecha(LocalDate.now());
             movimiento.setTipo(TipoMovimientoFinanciero.ENTRADA);
             movimiento.setCategoria(CategoriaMovimientoFinanciero.PAGO_CLIENTE);
-            movimiento.setValor(valorPagado);
+            movimiento.setValor(valorFinanciero);
             if (descuento.compareTo(BigDecimal.ZERO) > 0) {
                 movimiento.setDescuentoValor(descuento);
                 if (saldoAntes.compareTo(BigDecimal.ZERO) > 0) {
