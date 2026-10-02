@@ -42,6 +42,12 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
     private final JTable tablaMaquinarios = new JTable(modeloMaquinarios);
 
     private final JTextField campoBusqueda = new JTextField();
+    private static final String FILTRO_NOMBRE = "Nombre";
+    private static final String FILTRO_ALIAS = "Alias";
+    private static final String FILTRO_DOCUMENTO = "CI/RUC";
+    /** Por que campo busca el buscador de clientes. */
+    private final JComboBox<String> comboFiltro =
+            new JComboBox<>(new String[] {FILTRO_NOMBRE, FILTRO_ALIAS, FILTRO_DOCUMENTO});
     private final JLabel labelMaquinariosTitulo = new JLabel("Maquinarios");
 
     private final BotonPlano botonEditarCliente = new BotonPlano("EDITAR", Paleta.AZUL, Paleta.AZUL_CLARO);
@@ -78,7 +84,7 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
         botonRetirarSaldoCliente.setVisible(Sesion.tiene(Permiso.RETIRAR_SALDO));
 
         // Explicaciones al pasar el mouse (ver Ayuda).
-        Ayuda.tooltip(campoBusqueda, "Escriba parte del nombre y presione ENTER. Vacio y ENTER muestra todos.");
+        Ayuda.tooltip(campoBusqueda, "Escriba parte del nombre, alias o CI/RUC (segun lo elegido al lado) y presione ENTER. Vacio y ENTER muestra todos.");
         Ayuda.tooltip(botonEditarCliente, "Cambiar los datos del cliente seleccionado.");
         Ayuda.tooltip(botonEliminarCliente, "Borrar el cliente seleccionado.");
         Ayuda.tooltip(botonPagoCliente, "El cliente entrega dinero (efectivo o cheque pre-datado). "
@@ -130,7 +136,7 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
         JPanel centro = new JPanel(new BorderLayout(0, 8));
         centro.setOpaque(false);
 
-        JLabel labelBuscar = new JLabel("BUSCAR POR NOMBRE (ENTER PARA BUSCAR)");
+        JLabel labelBuscar = new JLabel("BUSCAR (ELIJA POR QUE BUSCAR Y PRESIONE ENTER)");
         labelBuscar.setForeground(Paleta.GRIS_TEXTO);
         labelBuscar.setFont(new Font("Segoe UI", Font.BOLD, 10));
 
@@ -145,6 +151,20 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
         panelBusqueda.setOpaque(false);
         panelBusqueda.add(labelBuscar, BorderLayout.NORTH);
         panelBusqueda.add(campoBusqueda, BorderLayout.CENTER);
+        comboFiltro.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        comboFiltro.setPreferredSize(new Dimension(110, 32));
+        Ayuda.tooltip(comboFiltro, "Elija si el buscador busca por nombre, por alias o por CI/RUC.");
+        // al cambiar el filtro, si ya hay texto escrito, busca de nuevo con el filtro nuevo
+        comboFiltro.addActionListener(e -> {
+            if (!campoBusqueda.getText().trim().isEmpty()) {
+                cargarClientes(campoBusqueda.getText().trim());
+            }
+        });
+        JPanel panelFiltro = new JPanel(new BorderLayout());
+        panelFiltro.setOpaque(false);
+        panelFiltro.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 6));
+        panelFiltro.add(comboFiltro, BorderLayout.CENTER);
+        panelBusqueda.add(panelFiltro, BorderLayout.WEST);
         centro.add(panelBusqueda, BorderLayout.NORTH);
 
         estilizarTabla(tablaClientes);
@@ -218,6 +238,7 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
     // ---------------------------------------------------------------- Carga de datos
 
     private void cargarClientes(String filtroNombre) {
+        String filtro = (String) comboFiltro.getSelectedItem();
         setHabilitado(false);
         new SwingWorker<List<Cliente>, Void>() {
             Exception error;
@@ -225,9 +246,16 @@ public class ClientesMaquinariosPanel extends JPanel implements PanelActualizabl
             @Override
             protected List<Cliente> doInBackground() {
                 try {
-                    return (filtroNombre == null || filtroNombre.isEmpty())
-                            ? clienteController.listarTodos()
-                            : clienteController.buscarPorNombre(filtroNombre);
+                    if (filtroNombre == null || filtroNombre.isEmpty()) {
+                        return clienteController.listarTodos();
+                    }
+                    if (FILTRO_ALIAS.equals(filtro)) {
+                        return clienteController.buscarPorAlias(filtroNombre);
+                    }
+                    if (FILTRO_DOCUMENTO.equals(filtro)) {
+                        return clienteController.buscarPorDocumento(filtroNombre);
+                    }
+                    return clienteController.buscarPorNombre(filtroNombre);
                 } catch (Exception e) {
                     error = e;
                     return List.of();

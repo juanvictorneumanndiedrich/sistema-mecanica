@@ -20,6 +20,9 @@ public class ClienteFormDialog extends JDialog {
     private final JTextField campoDocumento = new JTextField();
     private final JTextField campoTelefono = new JTextField();
     private final JTextField campoDireccion = new JTextField();
+    private final JTextField campoAlias1 = new JTextField();
+    private final JTextField campoAlias2 = new JTextField();
+    private final JTextField campoAlias3 = new JTextField();
     private final JLabel labelError = new JLabel(" ");
 
     private Cliente cliente;
@@ -44,7 +47,7 @@ public class ClienteFormDialog extends JDialog {
     }
 
     private void armarPantalla() {
-        setSize(420, 400);
+        setSize(420, 470);
         setResizable(false);
         setLayout(new BorderLayout());
 
@@ -62,6 +65,7 @@ public class ClienteFormDialog extends JDialog {
         fila = agregarCampo(formulario, gbc, fila, "DOCUMENTO (CI/RUC)", campoDocumento);
         fila = agregarCampo(formulario, gbc, fila, "TELEFONO", campoTelefono);
         fila = agregarCampo(formulario, gbc, fila, "DIRECCION", campoDireccion);
+        fila = agregarAlias(formulario, gbc, fila);
 
         labelError.setForeground(Paleta.ROJO_ERROR);
         labelError.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -107,6 +111,33 @@ public class ClienteFormDialog extends JDialog {
         return fila + 2;
     }
 
+    /** Los tres alias van en una sola fila, uno al lado del otro. */
+    private int agregarAlias(JPanel formulario, GridBagConstraints gbc, int fila) {
+        JLabel label = new JLabel("ALIAS (otros nombres para buscarlo, opcional)");
+        label.setForeground(Paleta.GRIS_TEXTO);
+        label.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        gbc.gridy = fila;
+        gbc.insets = new Insets(14, 0, 0, 0);
+        formulario.add(label, gbc);
+
+        JPanel fila3 = new JPanel(new GridLayout(1, 3, 6, 0));
+        fila3.setOpaque(false);
+        for (JTextField campo : new JTextField[] {campoAlias1, campoAlias2, campoAlias3}) {
+            campo.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+            campo.setPreferredSize(new Dimension(0, 34));
+            campo.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(Paleta.GRIS_BORDE),
+                    BorderFactory.createEmptyBorder(0, 8, 0, 8)));
+            fila3.add(campo);
+        }
+        Ayuda.tooltip(campoAlias1, "Apodo o nombre con el que tambien se conoce al cliente. "
+                + "La busqueda de clientes tambien encuentra por estos nombres.");
+        gbc.gridy = fila + 1;
+        gbc.insets = new Insets(4, 0, 0, 0);
+        formulario.add(fila3, gbc);
+        return fila + 2;
+    }
+
     private void cargarDatos() {
         if (cliente == null) {
             return;
@@ -115,6 +146,9 @@ public class ClienteFormDialog extends JDialog {
         campoDocumento.setText(DOCUMENTO_POR_DEFECTO.equals(cliente.getDocumento()) ? "" : cliente.getDocumento());
         campoTelefono.setText(cliente.getTelefono());
         campoDireccion.setText(cliente.getDireccion());
+        campoAlias1.setText(cliente.getAlias1());
+        campoAlias2.setText(cliente.getAlias2());
+        campoAlias3.setText(cliente.getAlias3());
     }
 
     private void onGuardar() {
@@ -137,6 +171,13 @@ public class ClienteFormDialog extends JDialog {
             return;
         }
 
+        for (JTextField campo : new JTextField[] {campoAlias1, campoAlias2, campoAlias3}) {
+            if (campo.getText().trim().length() > 120) {
+                labelError.setText("Cada alias puede tener como maximo 120 letras.");
+                return;
+            }
+        }
+
         if (cliente == null) {
             cliente = new Cliente();
         }
@@ -144,6 +185,9 @@ public class ClienteFormDialog extends JDialog {
         cliente.setDocumento(documento.isEmpty() ? DOCUMENTO_POR_DEFECTO : documento);
         cliente.setTelefono(vacioComoNull(telefono));
         cliente.setDireccion(vacioComoNull(campoDireccion.getText()));
+        cliente.setAlias1(vacioComoNull(campoAlias1.getText()));
+        cliente.setAlias2(vacioComoNull(campoAlias2.getText()));
+        cliente.setAlias3(vacioComoNull(campoAlias3.getText()));
 
         confirmado = true;
         dispose();

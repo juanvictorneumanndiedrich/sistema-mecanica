@@ -46,6 +46,14 @@ public class ClienteController {
         return clienteDAO.buscarPorNombre(nombre);
     }
 
+    public List<Cliente> buscarPorAlias(String alias) {
+        return clienteDAO.buscarPorAlias(alias);
+    }
+
+    public List<Cliente> buscarPorDocumento(String documento) {
+        return clienteDAO.buscarPorDocumentoParecido(documento);
+    }
+
     public void eliminar(Cliente cliente) {
         Sesion.exigir(Permiso.ELIMINAR_REGISTROS);
         clienteDAO.eliminar(cliente);

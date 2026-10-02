@@ -31,6 +31,13 @@ public class Cliente {
      */
     private BigDecimal saldo = BigDecimal.ZERO;
 
+    // Hasta tres alias (nombres alternativos) para encontrar al cliente en las busquedas. Opcionales.
+    private String alias1;
+
+    private String alias2;
+
+    private String alias3;
+
     private List<Maquinario> maquinarios = new ArrayList<>();
 
     private List<OrdenDeServicio> ordenesDeServicio = new ArrayList<>();
@@ -84,6 +91,41 @@ public class Cliente {
 
     public void setSaldo(BigDecimal saldo) {
         this.saldo = saldo;
+    }
+
+    public String getAlias1() {
+        return alias1;
+    }
+
+    public void setAlias1(String alias1) {
+        this.alias1 = alias1;
+    }
+
+    public String getAlias2() {
+        return alias2;
+    }
+
+    public void setAlias2(String alias2) {
+        this.alias2 = alias2;
+    }
+
+    public String getAlias3() {
+        return alias3;
+    }
+
+    public void setAlias3(String alias3) {
+        this.alias3 = alias3;
+    }
+
+    /** Los alias cargados, separados por coma ("" si no tiene ninguno). */
+    public String getAliasTexto() {
+        StringBuilder texto = new StringBuilder();
+        for (String alias : new String[] {alias1, alias2, alias3}) {
+            if (alias != null && !alias.isBlank()) {
+                texto.append(texto.length() == 0 ? "" : ", ").append(alias.trim());
+            }
+        }
+        return texto.toString();
     }
 
     public List<Maquinario> getMaquinarios() {

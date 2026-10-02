@@ -22,12 +22,14 @@ public class ClienteDAO extends AbstractGenericDAO<Cliente, Long> {
 
     @Override
     protected String[] columnas() {
-        return new String[] {"nombre", "documento", "telefono", "direccion", "saldo"};
+        return new String[] {"nombre", "documento", "telefono", "direccion", "saldo", "alias_1", "alias_2",
+                "alias_3"};
     }
 
     @Override
     protected Object[] valoresColumnas(Cliente c) {
-        return new Object[] {c.getNombre(), c.getDocumento(), c.getTelefono(), c.getDireccion(), c.getSaldo()};
+        return new Object[] {c.getNombre(), c.getDocumento(), c.getTelefono(), c.getDireccion(), c.getSaldo(),
+                c.getAlias1(), c.getAlias2(), c.getAlias3()};
     }
 
     @Override
@@ -38,6 +40,9 @@ public class ClienteDAO extends AbstractGenericDAO<Cliente, Long> {
         c.setTelefono(rs.getString("telefono"));
         c.setDireccion(rs.getString("direccion"));
         c.setSaldo(rs.getBigDecimal("saldo"));
+        c.setAlias1(rs.getString("alias_1"));
+        c.setAlias2(rs.getString("alias_2"));
+        c.setAlias3(rs.getString("alias_3"));
         return c;
     }
 
@@ -60,6 +65,18 @@ public class ClienteDAO extends AbstractGenericDAO<Cliente, Long> {
     /** Busqueda por nombre (que contenga el texto), usada en la pantalla de Clientes y Maquinarios. */
     public List<Cliente> buscarPorNombre(String nombre) {
         return listar("WHERE LOWER(nombre) LIKE LOWER(?) ORDER BY nombre", "%" + nombre + "%");
+    }
+
+    /** Busqueda por cualquiera de los tres alias (que contenga el texto). */
+    public List<Cliente> buscarPorAlias(String alias) {
+        String patron = "%" + alias + "%";
+        return listar("WHERE LOWER(alias_1) LIKE LOWER(?) OR LOWER(alias_2) LIKE LOWER(?) "
+                + "OR LOWER(alias_3) LIKE LOWER(?) ORDER BY nombre", patron, patron, patron);
+    }
+
+    /** Busqueda por documento CI/RUC (que contenga el texto, no tiene que ser exacto). */
+    public List<Cliente> buscarPorDocumentoParecido(String documento) {
+        return listar("WHERE LOWER(documento) LIKE LOWER(?) ORDER BY nombre", "%" + documento + "%");
     }
 
     /** Busca por documento (CI/RUC) exato. */

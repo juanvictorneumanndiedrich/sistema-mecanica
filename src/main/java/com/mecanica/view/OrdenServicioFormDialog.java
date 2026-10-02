@@ -34,6 +34,8 @@ public class OrdenServicioFormDialog extends JDialog {
     private final OrdenDeServicioController ordenDeServicioController = new OrdenDeServicioController();
 
     private final JComboBox<Cliente> comboCliente = new JComboBox<>();
+    /** Marcado: lo que se escribe en CLIENTE se busca en los alias en vez del nombre. */
+    private final JCheckBox checkBuscarAlias = new JCheckBox("Buscar por alias");
     private final JComboBox<Maquinario> comboMaquinario = new JComboBox<>();
     private final JTextArea campoProblema = new JTextArea();
     private final JLabel labelError = new JLabel(" ");
@@ -83,7 +85,28 @@ public class OrdenServicioFormDialog extends JDialog {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.WEST;
 
-        int fila = agregarEtiqueta(formulario, gbc, 0, "CLIENTE * (escriba para buscar)");
+        // fila 0: etiqueta CLIENTE a la izquierda y "Buscar por alias" a la derecha
+        JLabel labelCliente = new JLabel("CLIENTE * (escriba para buscar)");
+        labelCliente.setForeground(Paleta.GRIS_TEXTO);
+        labelCliente.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        checkBuscarAlias.setOpaque(false);
+        checkBuscarAlias.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        checkBuscarAlias.setForeground(Paleta.GRIS_TEXTO);
+        Ayuda.tooltip(checkBuscarAlias, "Marcado: lo que escriba se busca en los alias del cliente, "
+                + "en vez de en el nombre.");
+        checkBuscarAlias.addActionListener(e -> {
+            if (!campoBusqueda.getText().isEmpty()) {
+                actualizarListaClientes();
+            }
+        });
+        JPanel filaCliente = new JPanel(new BorderLayout());
+        filaCliente.setOpaque(false);
+        filaCliente.add(labelCliente, BorderLayout.WEST);
+        filaCliente.add(checkBuscarAlias, BorderLayout.EAST);
+        gbc.gridy = 0;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        formulario.add(filaCliente, gbc);
+        int fila = 1;
         // Combo editable: al escribir, la lista se filtra a los clientes cuyo
         // nombre EMPIEZA con lo escrito. Arranca sin ningun cliente elegido.
         comboCliente.setEditor(new BasicComboBoxEditor() {
@@ -103,7 +126,10 @@ public class OrdenServicioFormDialog extends JDialog {
                                                             boolean isSelected, boolean cellHasFocus) {
                 super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
                 if (value instanceof Cliente c) {
-                    setText(c.getNombre());
+                    // buscando por alias, la lista muestra tambien los alias, para reconocer al cliente
+                    String alias = c.getAliasTexto();
+                    setText(!checkBuscarAlias.isSelected() || alias.isEmpty()
+                            ? c.getNombre() : c.getNombre() + "  (" + alias + ")");
                 }
                 return this;
             }
@@ -213,16 +239,33 @@ public class OrdenServicioFormDialog extends JDialog {
         return sinAcentos.trim().toLowerCase();
     }
 
-    /** Clientes cuyo nombre empieza con el texto (sin distinguir mayusculas ni acentos). */
+    /**
+     * Clientes cuyo nombre empieza con el texto -- o, con "Buscar por alias"
+     * marcado, alguno de sus alias (sin distinguir mayusculas ni acentos).
+     */
     private List<Cliente> filtrarClientes(String texto) {
         String buscado = normalizar(texto);
         List<Cliente> resultado = new ArrayList<>();
         for (Cliente c : todosClientes) {
-            if (normalizar(c.getNombre()).startsWith(buscado)) {
-                resultado.add(c);
+            for (String nombre : nombresDeBusqueda(c)) {
+                if (empiezaCon(nombre, buscado)) {
+                    resultado.add(c);
+                    break;
+                }
             }
         }
         return resultado;
+    }
+
+    /** El nombre, o los tres alias si esta marcado "Buscar por alias". */
+    private String[] nombresDeBusqueda(Cliente c) {
+        return checkBuscarAlias.isSelected()
+                ? new String[] {c.getAlias1(), c.getAlias2(), c.getAlias3()}
+                : new String[] {c.getNombre()};
+    }
+
+    private static boolean empiezaCon(String nombre, String buscado) {
+        return nombre != null && normalizar(nombre).startsWith(buscado);
     }
 
     private void textoCambio() {
@@ -270,8 +313,11 @@ public class OrdenServicioFormDialog extends JDialog {
             // Enter con texto escrito: vale si coincide exacto o queda un solo cliente
             List<Cliente> coincidencias = filtrarClientes(texto);
             for (Cliente c : coincidencias) {
-                if (normalizar(c.getNombre()).equals(normalizar(texto))) {
-                    elegido = c;
+                String buscado = normalizar(texto);
+                for (String nombre : nombresDeBusqueda(c)) {
+                    if (nombre != null && normalizar(nombre).equals(buscado)) {
+                        elegido = c;
+                    }
                 }
             }
             if (elegido == null && coincidencias.size() == 1) {

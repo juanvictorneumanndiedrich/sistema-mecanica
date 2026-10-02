@@ -245,3 +245,9 @@ ALTER TABLE viaje_cobrado ADD COLUMN IF NOT EXISTS pagado boolean DEFAULT false 
 ALTER TABLE item_orden_servicio DROP CONSTRAINT IF EXISTS item_orden_servicio_tipo_check;
 ALTER TABLE item_orden_servicio ADD CONSTRAINT item_orden_servicio_tipo_check
     CHECK (tipo IN ('SERVICIO', 'REPUESTO', 'VIAJE'));
+
+-- Alias de clientes (agregado despues): hasta tres nombres alternativos para
+-- encontrar al cliente en las busquedas. Opcionales.
+ALTER TABLE cliente ADD COLUMN IF NOT EXISTS alias_1 varchar(120);
+ALTER TABLE cliente ADD COLUMN IF NOT EXISTS alias_2 varchar(120);
+ALTER TABLE cliente ADD COLUMN IF NOT EXISTS alias_3 varchar(120);
