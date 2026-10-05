@@ -361,26 +361,15 @@
 	<textFieldExpression><![CDATA[$P{VALOR_TOTAL}]]></textFieldExpression>
 </textField>
 		<line>
-	<reportElement x="20" y="120" width="220" height="1" forecolor="#000000"/>
+	<reportElement x="160" y="120" width="220" height="1" forecolor="#000000"/>
 	<graphicElement><pen lineWidth="0.5"/></graphicElement>
 </line>
 		<textField isBlankWhenNull="true">
-	<reportElement x="20" y="122" width="220" height="12" forecolor="#000000"/>
+	<reportElement x="160" y="122" width="220" height="12" forecolor="#000000"/>
 	<textElement textAlignment="Center" verticalAlignment="Middle">
 		<font fontName="SansSerif" size="8" isBold="false" isItalic="false"/>
 	</textElement>
-	<textFieldExpression><![CDATA["Firma del cliente: " + $P{CLIENTE}]]></textFieldExpression>
-</textField>
-		<line>
-	<reportElement x="299" y="120" width="220" height="1" forecolor="#000000"/>
-	<graphicElement><pen lineWidth="0.5"/></graphicElement>
-</line>
-		<textField isBlankWhenNull="true">
-	<reportElement x="299" y="122" width="220" height="12" forecolor="#000000"/>
-	<textElement textAlignment="Center" verticalAlignment="Middle">
-		<font fontName="SansSerif" size="8" isBold="false" isItalic="false"/>
-	</textElement>
-	<textFieldExpression><![CDATA["Por " + $P{TALLER_NOMBRE}]]></textFieldExpression>
+	<textFieldExpression><![CDATA["Firma del cliente"]]></textFieldExpression>
 </textField>
 	</band>
 </summary>
