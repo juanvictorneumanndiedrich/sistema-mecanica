@@ -251,3 +251,8 @@ ALTER TABLE item_orden_servicio ADD CONSTRAINT item_orden_servicio_tipo_check
 ALTER TABLE cliente ADD COLUMN IF NOT EXISTS alias_1 varchar(120);
 ALTER TABLE cliente ADD COLUMN IF NOT EXISTS alias_2 varchar(120);
 ALTER TABLE cliente ADD COLUMN IF NOT EXISTS alias_3 varchar(120);
+
+-- Fecha de salida del empleado (agregada despues): ultimo dia trabajado,
+-- opcional. Con la fecha de admision sirve para pagar el salario proporcional
+-- del mes en que el empleado entra o sale.
+ALTER TABLE empleado ADD COLUMN IF NOT EXISTS fecha_salida date;

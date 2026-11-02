@@ -26,6 +26,12 @@ public class Empleado {
 
     private LocalDate fechaAdmision;
 
+    /**
+     * Ultimo dia trabajado (opcional). Junto con fechaAdmision sirve para
+     * pagar el salario proporcional del mes en que el empleado entra o sale.
+     */
+    private LocalDate fechaSalida;
+
     private boolean activo = true;
 
     public Empleado() {
@@ -85,6 +91,14 @@ public class Empleado {
 
     public void setFechaAdmision(LocalDate fechaAdmision) {
         this.fechaAdmision = fechaAdmision;
+    }
+
+    public LocalDate getFechaSalida() {
+        return fechaSalida;
+    }
+
+    public void setFechaSalida(LocalDate fechaSalida) {
+        this.fechaSalida = fechaSalida;
     }
 
     public boolean isActivo() {

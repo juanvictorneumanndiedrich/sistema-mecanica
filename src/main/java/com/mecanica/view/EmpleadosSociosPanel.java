@@ -193,6 +193,7 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
         tablaEmpleados.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 actualizarEstadoBotonesEmpleado();
+                completarPeriodoAPagar();
             }
         });
         panel.add(new JScrollPane(tablaEmpleados), BorderLayout.CENTER);
@@ -423,6 +424,39 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
         botonRecibos.setEnabled(hay);
     }
 
+    /**
+     * Al seleccionar un empleado, completa DESDE/HASTA con el periodo que le
+     * falta pagar (desde la fecha de admision, o desde el ultimo salario
+     * pagado). Si no se puede saber, deja las fechas como estaban.
+     */
+    private void completarPeriodoAPagar() {
+        Empleado seleccionado = empleadoSeleccionado();
+        if (seleccionado == null) {
+            return;
+        }
+        new SwingWorker<LocalDate[], Void>() {
+            @Override
+            protected LocalDate[] doInBackground() {
+                return empleadoController.proximoPeriodoAPagar(seleccionado);
+            }
+
+            @Override
+            protected void done() {
+                LocalDate[] periodo;
+                try {
+                    periodo = get();
+                } catch (Exception e) {
+                    return;
+                }
+                if (periodo == null || empleadoSeleccionado() != seleccionado) {
+                    return;
+                }
+                campoInicioEmpleado.setText(periodo[0].format(FORMATO_FECHA));
+                campoFinEmpleado.setText(periodo[1].format(FORMATO_FECHA));
+            }
+        }.execute();
+    }
+
     private void actualizarEstadoBotonesSocio() {
         boolean hay = socioSeleccionado() != null;
         botonEditarSocio.setEnabled(hay);
@@ -643,11 +677,25 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
             return;
         }
 
-        BigDecimal salarioBase = seleccionado.getSalarioBase() != null
-                ? seleccionado.getSalarioBase() : BigDecimal.ZERO;
+        EmpleadoController.SalarioDelPeriodo salario =
+                empleadoController.calcularSalarioDelPeriodo(seleccionado, inicio, fin);
+        if (salario.getDiasTrabajados() != null && salario.getDiasTrabajados() == 0) {
+            JOptionPane.showMessageDialog(this,
+                    "El empleado no trabajo ningun dia en este periodo.\n"
+                            + "Revise la fecha de admision y la fecha de salida del empleado.",
+                    "Sin dias trabajados", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        String detalleProporcional = salario.esProporcional()
+                ? "\nSalario proporcional: " + salario.getDiasTrabajados() + " de "
+                        + EmpleadoController.DIAS_DEL_MES + " dias (del "
+                        + salario.getDesde().format(FORMATO_FECHA) + " al "
+                        + salario.getHasta().format(FORMATO_FECHA) + ").\n"
+                : "";
         int opcion = JOptionPane.showConfirmDialog(this,
                 "Se va a registrar el salario de " + seleccionado.getNombre() + " (Gs. "
-                        + FORMATO_VALOR.format(salarioBase) + ") como gasto en Financiero.\n"
+                        + FORMATO_VALOR.format(salario.getValor()) + ") como gasto en Financiero.\n"
+                        + detalleProporcional
                         + "Los vales/adelantos del periodo " + campoInicioEmpleado.getText().trim()
                         + " a " + campoFinEmpleado.getText().trim() + " quedaran liquidados "
                         + "(no se descontaran de nuevo).\n\nEsta accion no se puede deshacer. Desea continuar?",
@@ -734,9 +782,19 @@ public class EmpleadosSociosPanel extends JPanel implements PanelActualizable {
             }
         }
 
-        BigDecimal salarioBase = resultado.getEmpleado().getSalarioBase() != null
-                ? resultado.getEmpleado().getSalarioBase() : BigDecimal.ZERO;
-        texto.append("\nSalario base:      Gs. ").append(FORMATO_VALOR.format(salarioBase)).append('\n');
+        EmpleadoController.SalarioDelPeriodo salario = resultado.getSalario();
+        texto.append("\nSalario base:      Gs. ").append(FORMATO_VALOR.format(salario.getSalarioBase())).append('\n');
+        if (salario.esProporcional()) {
+            texto.append("Dias trabajados:   ").append(salario.getDiasTrabajados()).append(" de ")
+                    .append(EmpleadoController.DIAS_DEL_MES);
+            if (salario.getDiasTrabajados() > 0) {
+                texto.append("  (del ").append(salario.getDesde().format(FORMATO_FECHA))
+                        .append(" al ").append(salario.getHasta().format(FORMATO_FECHA)).append(')');
+            }
+            texto.append('\n');
+            texto.append("Salario del periodo: Gs. ").append(FORMATO_VALOR.format(salario.getValor()))
+                    .append("  (proporcional)\n");
+        }
         texto.append("Total descontado:  Gs. ").append(FORMATO_VALOR.format(resultado.getTotalDescontado())).append('\n');
         texto.append("Valor liquido:     Gs. ").append(FORMATO_VALOR.format(resultado.getValorLiquido())).append('\n');
         return texto.toString();

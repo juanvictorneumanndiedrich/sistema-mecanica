@@ -29,6 +29,7 @@ public class EmpleadoFormDialog extends JDialog {
     private final JTextField campoCargo = new JTextField();
     private final JTextField campoSalarioBase = new JTextField();
     private final JTextField campoFechaAdmision = new JTextField();
+    private final JTextField campoFechaSalida = new JTextField();
     private final JCheckBox checkActivo = new JCheckBox("Activo");
     private final JLabel labelError = new JLabel(" ");
 
@@ -54,7 +55,8 @@ public class EmpleadoFormDialog extends JDialog {
     }
 
     private void armarPantalla() {
-        setSize(420, 620);
+        int altoPantalla = Toolkit.getDefaultToolkit().getScreenSize().height;
+        setSize(420, Math.min(690, altoPantalla - 80));
         setResizable(false);
         setLayout(new BorderLayout());
 
@@ -74,6 +76,8 @@ public class EmpleadoFormDialog extends JDialog {
         fila = agregarCampo(formulario, gbc, fila, "CARGO", campoCargo);
         fila = agregarCampo(formulario, gbc, fila, "SALARIO BASE (Gs.)", campoSalarioBase);
         fila = agregarCampo(formulario, gbc, fila, "FECHA DE ADMISION (DD/MM/AAAA)", campoFechaAdmision);
+        fila = agregarCampo(formulario, gbc, fila, "FECHA DE SALIDA (DD/MM/AAAA) - solo si dejo de trabajar",
+                campoFechaSalida);
 
         checkActivo.setSelected(true);
         checkActivo.setOpaque(false);
@@ -141,6 +145,9 @@ public class EmpleadoFormDialog extends JDialog {
         if (empleado.getFechaAdmision() != null) {
             campoFechaAdmision.setText(empleado.getFechaAdmision().format(FORMATO_FECHA));
         }
+        if (empleado.getFechaSalida() != null) {
+            campoFechaSalida.setText(empleado.getFechaSalida().format(FORMATO_FECHA));
+        }
         checkActivo.setSelected(empleado.isActivo());
     }
 
@@ -201,6 +208,21 @@ public class EmpleadoFormDialog extends JDialog {
             }
         }
 
+        LocalDate fechaSalida = null;
+        String textoSalida = campoFechaSalida.getText().trim();
+        if (!textoSalida.isEmpty()) {
+            try {
+                fechaSalida = LocalDate.parse(textoSalida, FORMATO_FECHA);
+            } catch (DateTimeParseException e) {
+                labelError.setText("La fecha de salida debe tener el formato DD/MM/AAAA.");
+                return;
+            }
+            if (fechaAdmision != null && fechaSalida.isBefore(fechaAdmision)) {
+                labelError.setText("La fecha de salida no puede ser anterior a la de admision.");
+                return;
+            }
+        }
+
         if (empleado == null) {
             empleado = new Empleado();
         }
@@ -210,6 +232,7 @@ public class EmpleadoFormDialog extends JDialog {
         empleado.setCargo(vacioComoNull(cargo));
         empleado.setSalarioBase(salarioBase);
         empleado.setFechaAdmision(fechaAdmision);
+        empleado.setFechaSalida(fechaSalida);
         empleado.setActivo(checkActivo.isSelected());
 
         confirmado = true;

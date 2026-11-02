@@ -16,13 +16,13 @@ public class EmpleadoDAO extends AbstractGenericDAO<Empleado, Long> {
 
     @Override
     protected String[] columnas() {
-        return new String[] {"nombre", "documento", "telefono", "cargo", "salario_base", "fecha_admision", "activo"};
+        return new String[] {"nombre", "documento", "telefono", "cargo", "salario_base", "fecha_admision", "fecha_salida", "activo"};
     }
 
     @Override
     protected Object[] valoresColumnas(Empleado e) {
         return new Object[] {e.getNombre(), e.getDocumento(), e.getTelefono(), e.getCargo(), e.getSalarioBase(),
-                e.getFechaAdmision(), e.isActivo()};
+                e.getFechaAdmision(), e.getFechaSalida(), e.isActivo()};
     }
 
     @Override
@@ -34,6 +34,7 @@ public class EmpleadoDAO extends AbstractGenericDAO<Empleado, Long> {
         e.setCargo(rs.getString("cargo"));
         e.setSalarioBase(rs.getBigDecimal("salario_base"));
         e.setFechaAdmision(BD.fecha(rs, "fecha_admision"));
+        e.setFechaSalida(BD.fecha(rs, "fecha_salida"));
         e.setActivo(rs.getBoolean("activo"));
         return e;
     }
